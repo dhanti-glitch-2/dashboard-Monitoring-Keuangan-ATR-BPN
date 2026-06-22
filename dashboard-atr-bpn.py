@@ -1280,73 +1280,249 @@ elif halaman == "📐 Regresi Linear":
                        'Proyeksi 2027 (%)': proj27[i]} for i in range(11)]
         st.dataframe(pd.DataFrame(tbl_proj27), use_container_width=True, hide_index=True)
 
-    # ── TAB 3 ──
+    # ── TAB 3 ── (ganti seluruh blok `with tab_r3:` yang lama dengan ini)
     with tab_r3:
         st.markdown("### 📋 Ringkasan Semua Seksi — Perbandingan Tahap 1 & Tahap 2")
+
+        # ── Penjelasan MAE naik di Tahap 2 ────────────────────────────────
         st.markdown("""
-        <div class='info-box'>
-        📌 <b>Tabel ini membandingkan</b> persamaan regresi, nilai akurasi (R² dan MAE),
-        serta total proyeksi antara Tahap 1 (untuk 2026) dan Tahap 2 (untuk 2027) untuk
-        semua seksi sekaligus. Kolom 'Selisih' menunjukkan apakah proyeksi 2027 lebih tinggi
-        atau lebih rendah dari 2026.
+        <div class='info-box-yellow'>
+        <b>❓ Mengapa MAE Tahap 2 lebih tinggi dari Tahap 1?</b><br><br>
+        <b>Tahap 1</b> menggunakan data aktual 2018–2025 yang berfluktuasi secara alami.
+        Garis regresi dihitung dari SPSS dan sudah cocok dengan pola historis tersebut.<br><br>
+        <b>Tahap 2</b> menambahkan 11 titik <i>proyeksi 2026</i> ke dalam dataset. Proyeksi ini
+        bersifat <i>sangat smooth</i> karena merupakan hasil garis lurus tanpa noise. Titik-titik
+        smooth tersebut menarik garis regresi baru ke arah tertentu, sehingga jarak garis regresi
+        terhadap data aktual yang berfluktuasi justru menjadi lebih besar → MAE naik.<br><br>
+        <b>Kesimpulan:</b> Ini adalah efek wajar secara statistik — bukan berarti model Tahap 2
+        lebih buruk. MAE Tahap 2 mencerminkan ketidakpastian tambahan dari penggunaan data proyeksi
+        sebagai input, bukan data nyata.
         </div>
         """, unsafe_allow_html=True)
 
-        tbl_all = []
-        for s in SEKSI_LIST:
+        # ── Kartu Klasifikasi Risiko (ringkas, mudah dipahami) ─────────────
+        st.markdown("#### 🎯 Klasifikasi Risiko per Seksi (berdasarkan MAE Tahap 1)")
+        st.caption(
+            "Klasifikasi risiko ditetapkan dari MAE Tahap 1 karena menggunakan data aktual murni "
+            "(2018–2025), tanpa pengaruh data synthetic dari proyeksi 2026."
+        )
+
+        risk_cols = st.columns(6)
+        risk_config = {
+            'Rendah': {'border': '#00b894', 'bg': '#e8fdf5', 'txt': '#00695c', 'icon': '🟢'},
+            'Sedang': {'border': '#c8a84b', 'bg': '#fffbea', 'txt': '#7a6000', 'icon': '🟡'},
+            'Tinggi': {'border': '#d63031', 'bg': '#ffeaea', 'txt': '#b71c1c', 'icon': '🔴'},
+        }
+        for i, s in enumerate(SEKSI_LIST):
+            r  = REGRESI[s]
             rd = regresi_data[s]
-            tbl_all.append({
-                'Seksi': s, 'Nama Seksi': SEKSI_NAMA[s],
-                'a Tahap1': rd['a1'], 'b Tahap1': rd['b1'],
-                'Persamaan Tahap1': f"Ŷ = {rd['a1']} + ({rd['b1']})·X",
-                'R² T1': rd['r2_1'], 'MAE T1 (%)': rd['mae1'],
-                'a Tahap2': rd['a2'], 'b Tahap2': rd['b2'],
-                'Persamaan Tahap2': f"Ŷ = {rd['a2']} + ({rd['b2']})·X",
-                'R² T2': rd['r2_2'], 'MAE T2 (%)': rd['mae2'],
-                'Total Proj 2026 (%)': round(sum(rd['proj2026']),2),
-                'Total Proj 2027 (%)': round(sum(rd['proj2027']),2),
-                'Selisih 2027-2026 (%)': round(sum(rd['proj2027'])-sum(rd['proj2026']),2),
-                'Risiko (MAE)': REGRESI[s]['risiko'],
-            })
-        st.dataframe(pd.DataFrame(tbl_all), use_container_width=True, hide_index=True)
+            cfg = risk_config[r['risiko']]
+            with risk_cols[i]:
+                st.markdown(f"""
+                <div style='background:{cfg["bg"]};border-radius:12px;padding:14px 12px;
+                            border:1.5px solid {cfg["border"]};text-align:center;height:100%'>
+                  <div style='font-size:22px'>{cfg["icon"]}</div>
+                  <div style='font-size:15px;font-weight:800;color:{cfg["txt"]};margin:4px 0'>{s}</div>
+                  <div style='font-size:10px;color:{cfg["txt"]};margin-bottom:6px'>{SEKSI_NAMA[s]}</div>
+                  <hr style='border:none;border-top:1px solid {cfg["border"]};margin:6px 0'>
+                  <div style='font-size:11px;color:{cfg["txt"]}'>MAE T1</div>
+                  <div style='font-size:16px;font-weight:700;color:{cfg["txt"]}'>{r["mae"]}%</div>
+                  <div style='font-size:11px;color:{cfg["txt"]};margin-top:2px'>{r["risiko"]}</div>
+                  <hr style='border:none;border-top:1px solid {cfg["border"]};margin:6px 0'>
+                  <div style='font-size:10px;color:{cfg["txt"]}'>MAE T2 (setelah proj 2026)</div>
+                  <div style='font-size:13px;font-weight:600;color:{cfg["txt"]}'>{round(rd["mae2"],4)}%</div>
+                </div>
+                """, unsafe_allow_html=True)
 
-        risiko_clr = {'Rendah':'#00b894','Sedang':'#fdcb6e','Tinggi':'#d63031'}
-        col_mae1, col_mae2 = st.columns(2)
-        for col, tahap, key_mae, warna_judul in [
-            (col_mae1,"Tahap 1 (data 2018–2025)",'mae1','#1a3a6b'),
-            (col_mae2,"Tahap 2 (data 2018–2026)",'mae2','#9b59b6')
-        ]:
-            with col:
-                st.markdown(f"**MAE per Seksi — {tahap}**")
-                mae_vals = [regresi_data[s][key_mae] for s in SEKSI_LIST]
-                clrs = [risiko_clr[REGRESI[s]['risiko']] for s in SEKSI_LIST]
-                fig_m = go.Figure(go.Bar(
-                    x=SEKSI_LIST, y=mae_vals,
-                    marker=dict(color=clrs),
-                    text=[f"{v:.4f}%" for v in mae_vals],textposition='outside'
-                ))
-                fig_m.update_layout(
-                    margin=dict(t=40,b=40,l=40,r=20),
-                    paper_bgcolor='rgba(0,0,0,0)',plot_bgcolor='#fafafa',
-                    yaxis=dict(title='MAE (%)',gridcolor='#f0f0f0'),
-                    height=300,font=dict(family='Segoe UI')
+        st.markdown("<br>", unsafe_allow_html=True)
+
+        # ── Grafik perbandingan MAE T1 vs T2 ──────────────────────────────
+        st.markdown("#### 📊 Perbandingan Nilai MAE: Tahap 1 vs Tahap 2")
+
+        col_chart1, col_chart2 = st.columns(2)
+
+        # Warna berdasarkan risiko T1
+        def warna_risiko(mae_val):
+            if mae_val <= 1:   return '#00b894'
+            elif mae_val <= 3: return '#c8a84b'
+            return '#d63031'
+
+        mae1_vals = [REGRESI[s]['mae'] for s in SEKSI_LIST]
+        mae2_vals = [round(regresi_data[s]['mae2'], 4) for s in SEKSI_LIST]
+
+        with col_chart1:
+            st.markdown("""
+            <div class='chart-card'>
+            <div class='chart-title'>📈 MAE Tahap 1 — data aktual 2018–2025</div>
+            """, unsafe_allow_html=True)
+            st.caption(
+                "Nilai MAE dihitung dari selisih antara proyeksi dan data realisasi nyata. "
+                "S3 memiliki risiko tinggi karena pola realisasinya paling tidak konsisten "
+                "antar tahun (fluktuasi besar dari 24% hingga 100%)."
+            )
+            colors_t1 = [warna_risiko(v) for v in mae1_vals]
+            fig_t1 = go.Figure(go.Bar(
+                x=SEKSI_LIST,
+                y=mae1_vals,
+                marker=dict(color=colors_t1, line=dict(width=0)),
+                text=[f"{v}%" for v in mae1_vals],
+                textposition='outside',
+                hovertemplate=(
+                    '<b>%{x}</b><br>'
+                    'MAE = %{y:.4f}%<br>'
+                    '<extra></extra>'
+                ),
+            ))
+            # Garis batas risiko
+            for batas, warna, label in [
+                (1, '#c8a84b', 'Batas sedang (1%)'),
+                (3, '#d63031', 'Batas tinggi (3%)'),
+            ]:
+                fig_t1.add_hline(
+                    y=batas, line_dash='dot', line_color=warna, line_width=1.5,
+                    annotation_text=label,
+                    annotation_position='top right',
+                    annotation_font_size=10,
                 )
-                st.plotly_chart(fig_m, use_container_width=True, config={'displayModeBar':False})
+            fig_t1.update_layout(
+                margin=dict(t=30, b=50, l=50, r=20),
+                paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='#fafafa',
+                yaxis=dict(title='MAE (%)', gridcolor='#f0f0f0', range=[0, 6.5]),
+                xaxis=dict(title='Seksi', gridcolor='#f0f0f0'),
+                height=320, font=dict(family='Segoe UI'),
+                showlegend=False,
+            )
+            st.plotly_chart(fig_t1, use_container_width=True, config={'displayModeBar': False})
+            st.markdown('</div>', unsafe_allow_html=True)
 
+        with col_chart2:
+            st.markdown("""
+            <div class='chart-card'>
+            <div class='chart-title'>📉 MAE Tahap 2 — data 2018–2025 + proyeksi 2026</div>
+            """, unsafe_allow_html=True)
+            st.caption(
+                "Nilai MAE cenderung lebih seragam karena penambahan data proyeksi 2026 yang "
+                "smooth 'meredam' perbedaan antar seksi. Semua seksi masuk kategori Sedang "
+                "(1%–3%) di Tahap 2 — lihat penjelasan di atas untuk alasannya."
+            )
+            fig_t2 = go.Figure(go.Bar(
+                x=SEKSI_LIST,
+                y=mae2_vals,
+                marker=dict(
+                    color=[warna_risiko(v) for v in mae2_vals],
+                    line=dict(width=0),
+                    opacity=0.75,
+                ),
+                text=[f"{v}%" for v in mae2_vals],
+                textposition='outside',
+                hovertemplate=(
+                    '<b>%{x}</b><br>'
+                    'MAE T2 = %{y:.4f}%<br>'
+                    '<extra></extra>'
+                ),
+            ))
+            for batas, warna, label in [
+                (1, '#c8a84b', 'Batas sedang (1%)'),
+                (3, '#d63031', 'Batas tinggi (3%)'),
+            ]:
+                fig_t2.add_hline(
+                    y=batas, line_dash='dot', line_color=warna, line_width=1.5,
+                    annotation_text=label,
+                    annotation_position='top right',
+                    annotation_font_size=10,
+                )
+            fig_t2.update_layout(
+                margin=dict(t=30, b=50, l=50, r=20),
+                paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='#fafafa',
+                yaxis=dict(title='MAE (%)', gridcolor='#f0f0f0', range=[0, 6.5]),
+                xaxis=dict(title='Seksi', gridcolor='#f0f0f0'),
+                height=320, font=dict(family='Segoe UI'),
+                showlegend=False,
+            )
+            st.plotly_chart(fig_t2, use_container_width=True, config={'displayModeBar': False})
+            st.markdown('</div>', unsafe_allow_html=True)
+
+        # ── Grafik selisih MAE (naik/turun) ───────────────────────────────
+        st.markdown("#### 🔀 Perubahan MAE dari Tahap 1 ke Tahap 2 per Seksi")
+        st.caption(
+            "Batang di atas nol = MAE naik (proyeksi kurang akurat setelah data 2026 dimasukkan). "
+            "Batang di bawah nol = MAE turun (jarang terjadi). "
+            "S3 satu-satunya yang MAE-nya turun karena data aktualnya sangat tidak konsisten — "
+            "proyeksi smooth justru 'memperbaiki' rata-rata error."
+        )
+
+        selisih = [round(mae2_vals[i] - mae1_vals[i], 4) for i in range(6)]
+        selisih_colors = ['#d63031' if v > 0 else '#00b894' for v in selisih]
+
+        fig_sel = go.Figure(go.Bar(
+            x=SEKSI_LIST,
+            y=selisih,
+            marker=dict(color=selisih_colors, line=dict(width=0)),
+            text=[f"{'↑' if v > 0 else '↓'} {abs(v):.4f}%" for v in selisih],
+            textposition='outside',
+            hovertemplate=(
+                '<b>%{x}</b><br>'
+                'Selisih MAE (T2 − T1) = %{y:.4f}%<br>'
+                '<extra></extra>'
+            ),
+        ))
+        fig_sel.add_hline(y=0, line_color='#636e72', line_width=1)
+        fig_sel.update_layout(
+            margin=dict(t=20, b=60, l=50, r=20),
+            paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='#fafafa',
+            yaxis=dict(
+                title='Selisih MAE (Tahap 2 − Tahap 1)', gridcolor='#f0f0f0',
+                zeroline=True, zerolinecolor='#ccc',
+            ),
+            xaxis=dict(title='Seksi'),
+            height=280, font=dict(family='Segoe UI'),
+            showlegend=False,
+        )
+        st.plotly_chart(fig_sel, use_container_width=True, config={'displayModeBar': False})
+
+        # ── Tabel ringkasan semua seksi ────────────────────────────────────
+        with st.expander("📋 Lihat tabel lengkap (persamaan, R², MAE, proyeksi) — klik untuk buka"):
+            tbl_all = []
+            for s in SEKSI_LIST:
+                rd = regresi_data[s]
+                tbl_all.append({
+                    'Seksi': s,
+                    'Nama': SEKSI_NAMA[s],
+                    'Persamaan T1': f"Ŷ = {rd['a1']} + ({rd['b1']})·X",
+                    'R² T1': rd['r2_1'],
+                    'MAE T1 (%)': rd['mae1'],
+                    'Persamaan T2': f"Ŷ = {rd['a2']} + ({rd['b2']})·X",
+                    'R² T2': rd['r2_2'],
+                    'MAE T2 (%)': rd['mae2'],
+                    'Total Proj 2026 (%)': round(sum(rd['proj2026']), 2),
+                    'Total Proj 2027 (%)': round(sum(rd['proj2027']), 2),
+                    'Selisih 2027-2026 (%)': round(
+                        sum(rd['proj2027']) - sum(rd['proj2026']), 2
+                    ),
+                    'Risiko': REGRESI[s]['risiko'],
+                })
+            st.dataframe(pd.DataFrame(tbl_all), use_container_width=True, hide_index=True)
+            st.caption(
+                "T1 = Tahap 1 (data aktual 2018–2025)  |  "
+                "T2 = Tahap 2 (data aktual + proyeksi 2026)"
+            )
+
+        # ── Keterangan penutup ─────────────────────────────────────────────
         st.markdown("""
         <div class='keterangan-box'>
-        <b>📏 Interpretasi MAE & Klasifikasi Risiko:</b><br>
-        <span style='color:#00b894'>🟢 <b>Rendah</b> → MAE ≤ 1% — akurasi tinggi, proyeksi sangat mendekati aktual</span>
-        &nbsp; (S2, S4, S5, S6)<br>
-        <span style='color:#fdcb6e'>🟡 <b>Sedang</b> → 1% &lt; MAE ≤ 3% — akurasi cukup, deviasi dalam batas wajar</span>
-        &nbsp; (S1)<br>
-        <span style='color:#d63031'>🔴 <b>Tinggi</b> → MAE &gt; 3% — akurasi rendah, pola realisasi tidak konsisten antar tahun</span>
-        &nbsp; (S3)<br><br>
-        <b>R² (R-Kuadrat)</b>: mendekati 1 = persamaan sangat baik menggambarkan pola data;
-        mendekati 0 = data menyebar jauh dari garis regresi.
+        <b>📊 Ringkasan Klasifikasi Risiko (berdasarkan MAE Tahap 1 — data aktual):</b><br>
+        <span style='color:#d63031'>🔴 <b>S3 — Penataan & Pemberdayaan → Risiko Tinggi (MAE = 4.99%)</b></span><br>
+        &nbsp;&nbsp;&nbsp;Realisasi historis sangat tidak konsisten (terendah 24.34% di 2021,
+        tertinggi 100% di 2024). Model sulit membentuk pola yang stabil.<br><br>
+        <span style='color:#c8a84b'>🟡 <b>S1 — Survei & Pemetaan → Risiko Sedang (MAE = 2.53%)</b></span><br>
+        &nbsp;&nbsp;&nbsp;Pola cukup stabil, proyeksi memadai dengan deviasi dalam batas moderat.<br><br>
+        <span style='color:#00b894'>🟢 <b>S2, S4, S5, S6 → Risiko Rendah (MAE ≤ 1%)</b></span><br>
+        &nbsp;&nbsp;&nbsp;Realisasi sangat konsisten antar tahun, proyeksi sangat akurat.<br><br>
+        <b>Catatan interpretasi MAE Tahap 2 yang lebih tinggi:</b> Ini wajar karena data proyeksi 2026
+        yang smooth ditambahkan ke data aktual yang berfluktuasi. Untuk evaluasi risiko,
+        gunakan MAE Tahap 1 sebagai acuan utama.
         </div>
         """, unsafe_allow_html=True)
-
     # ── TAB 4 ──
     with tab_r4:
         st.markdown("""
