@@ -696,105 +696,28 @@ elif halaman == "📊 Monitoring Bulanan":
 
     st.markdown("<br>", unsafe_allow_html=True)
 
-    col1, col2 = st.columns(2)
-    with col1:
-        st.markdown('<div class="chart-card">', unsafe_allow_html=True)
-        st.markdown('<div class="chart-title">📈 Kumulatif % Realisasi per Bulan</div>', unsafe_allow_html=True)
-        st.caption("Grafik ini menunjukkan total penyerapan anggaran yang terakumulasi dari bulan ke bulan. Semakin curam naik di awal = penyerapan lebih merata.")
-        sel_kum = st.selectbox("Pilih Seksi", tampil_seksi_mon, key='kum_seksi',
-                               format_func=lambda x: f"{x} — {SEKSI_NAMA[x]}")
-        d = hasil_monitoring[sel_kum]
-        fig_kum = go.Figure()
-        fig_kum.add_trace(go.Scatter(
-            x=BULAN, y=d['kumulatif'], mode='lines+markers',
-            fill='tozeroy', fillcolor='rgba(46,134,222,0.1)',
-            line=dict(color='#2e86de',width=2.5),
-            marker=dict(size=7,color='#2e86de'),
-        ))
-        fig_kum.update_layout(
-            margin=dict(t=10,b=60,l=45,r=10),
-            paper_bgcolor='rgba(0,0,0,0)',plot_bgcolor='#fafafa',
-            xaxis=dict(tickangle=-30,gridcolor='#f0f0f0'),
-            yaxis=dict(title='% Kumulatif',gridcolor='#f0f0f0'),
-            height=300,font=dict(family='Segoe UI',size=12)
-        )
-        st.plotly_chart(fig_kum, use_container_width=True, config={'displayModeBar':False})
-        st.markdown('</div>', unsafe_allow_html=True)
-
-    with col2:
-        st.markdown('<div class="chart-card">', unsafe_allow_html=True)
-        st.markdown('<div class="chart-title">🌊 Pertumbuhan Serapan per Bulan</div>', unsafe_allow_html=True)
-        st.caption(
-            "Grafik ini menunjukkan perubahan penyerapan tiap bulan dibanding bulan sebelumnya. "
-            "🟢 Naik = realisasi bertambah | 🔴 Turun = realisasi berkurang dari bulan sebelumnya."
-        )
-        sel_delta = st.selectbox("Pilih Seksi", tampil_seksi_mon, key='delta_seksi',
-                                 format_func=lambda x: f"{x} — {SEKSI_NAMA[x]}")
-        d2 = hasil_monitoring[sel_delta]
-        delta_vals = d2['delta']
-
-        delta_colors  = ['#00b894' if v >= 0 else '#d63031' for v in delta_vals]
-        delta_symbols = ['▲' if v >= 0 else '▼' for v in delta_vals]
-        delta_labels  = [f"{sym} {abs(v):.2f}%" for sym, v in zip(delta_symbols, delta_vals)]
-
-        fig_delta = go.Figure()
-        fig_delta.add_trace(go.Bar(
-            x=BULAN,
-            y=delta_vals,
-            marker=dict(color=delta_colors, line=dict(width=0), opacity=0.85),
-            text=delta_labels,
-            textposition='outside',
-            textfont=dict(size=11, color=delta_colors),
-            hovertemplate='<b>%{x}</b><br>Perubahan: <b>%{y:+.2f}%</b><br><extra></extra>',
-            cliponaxis=False,
-        ))
-        fig_delta.add_hline(y=0, line_color='#2d3436', line_width=1.5)
-
-        naik  = sum(1 for v in delta_vals if v >= 0)
-        turun = sum(1 for v in delta_vals if v < 0)
-        fig_delta.add_annotation(
-            xref='paper', yref='paper', x=1.0, y=1.08,
-            text=f"🟢 Naik: {naik} bulan  |  🔴 Turun: {turun} bulan",
-            showarrow=False, font=dict(size=11, color='#636e72'),
-            align='right', xanchor='right',
-        )
-
-        max_abs = max(abs(v) for v in delta_vals) if delta_vals else 5
-        y_range = [-(max_abs + max_abs * 0.45), max_abs + max_abs * 0.45]
-
-        fig_delta.update_layout(
-            margin=dict(t=40, b=70, l=50, r=20),
-            paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='#fafafa',
-            xaxis=dict(tickangle=-30, gridcolor='#f0f0f0', title='Bulan', tickfont=dict(size=11)),
-            yaxis=dict(
-                title='% Perubahan dari Bulan Sebelumnya',
-                gridcolor='#f0f0f0', zeroline=False,
-                range=y_range, ticksuffix='%',
-            ),
-            height=320, font=dict(family='Segoe UI'), showlegend=False,
-        )
-        st.plotly_chart(fig_delta, use_container_width=True, config={'displayModeBar': False})
-
-        rows_delta = []
-        for i, (bln, val) in enumerate(zip(BULAN, delta_vals)):
-            status = '🟢 Naik' if val >= 0 else '🔴 Turun'
-            rows_delta.append({
-                'Bulan': bln,
-                'Perubahan (%)': f"{val:+.2f}%",
-                'Status': status,
-                'Keterangan': (
-                    f"Bertambah {val:.2f}% dari {BULAN[i-1] if i > 0 else '—'}"
-                    if val >= 0
-                    else f"Berkurang {abs(val):.2f}% dari {BULAN[i-1] if i > 0 else '—'}"
-                ),
-            })
-        with st.expander("📋 Lihat tabel detail perubahan bulanan — klik untuk buka"):
-            st.dataframe(pd.DataFrame(rows_delta), use_container_width=True, hide_index=True)
-            st.caption(
-                "Kolom 'Perubahan (%)' bertanda + = realisasi bertambah, − = realisasi berkurang "
-                "dibanding bulan sebelumnya. Bulan Februari tidak memiliki bulan sebelumnya dalam dataset."
-            )
-        st.markdown('</div>', unsafe_allow_html=True)
+    st.markdown('<div class="chart-card">', unsafe_allow_html=True)
+    st.markdown('<div class="chart-title">📈 Kumulatif % Realisasi per Bulan</div>', unsafe_allow_html=True)
+    st.caption("Grafik ini menunjukkan total penyerapan anggaran yang terakumulasi dari bulan ke bulan. Semakin curam naik di awal = penyerapan lebih merata.")
+    sel_kum = st.selectbox("Pilih Seksi", tampil_seksi_mon, key='kum_seksi',
+                           format_func=lambda x: f"{x} — {SEKSI_NAMA[x]}")
+    d = hasil_monitoring[sel_kum]
+    fig_kum = go.Figure()
+    fig_kum.add_trace(go.Scatter(
+        x=BULAN, y=d['kumulatif'], mode='lines+markers',
+        fill='tozeroy', fillcolor='rgba(46,134,222,0.1)',
+        line=dict(color='#2e86de',width=2.5),
+        marker=dict(size=7,color='#2e86de'),
+    ))
+    fig_kum.update_layout(
+        margin=dict(t=10,b=60,l=45,r=10),
+        paper_bgcolor='rgba(0,0,0,0)',plot_bgcolor='#fafafa',
+        xaxis=dict(tickangle=-30,gridcolor='#f0f0f0'),
+        yaxis=dict(title='% Kumulatif',gridcolor='#f0f0f0'),
+        height=320,font=dict(family='Segoe UI',size=12)
+    )
+    st.plotly_chart(fig_kum, use_container_width=True, config={'displayModeBar':False})
+    st.markdown('</div>', unsafe_allow_html=True)
 
     st.markdown('<div class="chart-card">', unsafe_allow_html=True)
     st.markdown('<div class="chart-title">📋 Tabel % Realisasi Bulanan per Seksi</div>', unsafe_allow_html=True)
