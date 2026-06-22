@@ -1,4 +1,3 @@
-cat > /mnt/user-data/outputs/app.py << 'ENDOFFILE'
 import streamlit as st
 import pandas as pd
 import numpy as np
