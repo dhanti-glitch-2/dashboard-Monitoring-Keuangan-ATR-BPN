@@ -3,7 +3,7 @@ import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
 import plotly.express as px
-import base64, io, os
+import base64, io, os, json
 
 # ─── PAGE CONFIG ────────────────────────────────────────────────────────────
 st.set_page_config(
@@ -13,13 +13,35 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# ─── LOGIN ───────────────────────────────────────────────────────────────────
-# Tinggal tambah/hapus baris di sini untuk menambahkan akun pegawai baru.
-# Setiap pegawai bisa punya username & password sendiri, tapi "seksi" harus
-# disamakan dengan seksi tempat dia bertugas (supaya hak akses datanya sama).
-USERS = {
-    # ── Admin Keuangan (akses semua seksi) ──────────────────────────────────
-    "admin":     {"password": "atrbpn2025", "role": "keuangan", "nama": "Admin Keuangan"},
+# ─── LOGIN & MANAJEMEN USER ──────────────────────────────────────────────────
+# User disimpan di file users_data.json (di folder yang sama dengan app ini),
+# supaya bisa ditambah/dihapus dari dalam app (menu "Manajemen User") tanpa
+# perlu ubah kode. DEFAULT_USERS di bawah ini cuma dipakai SEKALI sebagai
+# data awal — kalau file users_data.json sudah ada, isinya itu yang dipakai.
+#
+# PENTING (keterbatasan Streamlit Community Cloud): file ini bisa ke-reset
+# ke versi default setiap kali app di-reboot / repo di-push ulang, karena
+# filesystem server-nya tidak permanen. Jadi setelah nambah/hapus user lewat
+# menu "Manajemen User", SEBAIKNYA download backup users_data.json (ada
+# tombolnya di menu itu) lalu commit/replace file itu di repo GitHub supaya
+# datanya gak balik ke versi lama.
+
+ROLE_LABEL = {
+    'keuangan':     'Admin Keuangan',
+    'kepala_kantor':'Kepala Kantor',
+    'kasubbag_tu':  'Kasubbag Tata Usaha',
+    'seksi':        'Admin Seksi',
+}
+# Role-role ini punya akses ke SEMUA seksi (S1-S6) + menu Analisis/Regresi/Manajemen User
+FULL_ACCESS_ROLES = ['keuangan', 'kepala_kantor', 'kasubbag_tu']
+
+USERS_FILE = os.path.join(os.path.dirname(__file__), 'users_data.json')
+
+DEFAULT_USERS = {
+    # ── Akses penuh: semua seksi (S1–S6) ────────────────────────────────────
+    "admin":         {"password": "atrbpn2025",  "role": "keuangan",     "nama": "Admin Keuangan"},
+    "kepala.kantor": {"password": "kepala2025",  "role": "kepala_kantor","nama": "Kepala Kantor"},
+    "kasubbag.tu":   {"password": "kasubbag2025","role": "kasubbag_tu",  "nama": "Kasubbag Tata Usaha"},
 
     # ── Seksi 1 — Survei & Pemetaan ──────────────────────────────────────────
     "andi.s1":   {"password": "andi2025",   "role": "seksi", "seksi": "S1", "nama": "Andi Wijaya"},
@@ -41,10 +63,30 @@ USERS = {
     "fajar.s5":  {"password": "fajar2025",  "role": "seksi", "seksi": "S5", "nama": "Fajar Hidayat"},
     "dewi.s5":   {"password": "dewi2025",   "role": "seksi", "seksi": "S5", "nama": "Dewi Lestari"},
 
-    # ── Seksi 6 — Sub Bag Tata Usaha ─────────────────────────────────────────
+    # ── Seksi 6 — Sub Bag Tata Usaha (staf biasa, BUKAN kasubbag) ───────────
     "gilang.s6": {"password": "gilang2025", "role": "seksi", "seksi": "S6", "nama": "Gilang Ramadhan"},
     "yuni.s6":   {"password": "yuni2025",   "role": "seksi", "seksi": "S6", "nama": "Yuni Astuti"},
 }
+
+def load_users():
+    """Baca daftar user dari file JSON. Kalau file belum ada, buat dari DEFAULT_USERS."""
+    if os.path.exists(USERS_FILE):
+        try:
+            with open(USERS_FILE, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+            if isinstance(data, dict) and len(data) > 0:
+                return data
+        except Exception:
+            pass
+    save_users(DEFAULT_USERS)
+    return dict(DEFAULT_USERS)
+
+def save_users(users_dict):
+    """Simpan daftar user ke file JSON."""
+    with open(USERS_FILE, 'w', encoding='utf-8') as f:
+        json.dump(users_dict, f, indent=2, ensure_ascii=False)
+
+USERS = load_users()
 
 def show_login():
     st.markdown("""
@@ -83,7 +125,7 @@ def show_login():
                 st.rerun()
             else:
                 st.error("❌ Username atau password salah. Silakan coba lagi.")
-                st.info("⚠️ Akses hanya untuk Admin Keuangan dan pegawai Seksi yang terdaftar.")
+                st.info("⚠️ Akses hanya untuk Admin Keuangan, Kepala Kantor, Kasubbag TU, dan pegawai Seksi yang terdaftar.")
 
         st.markdown("""
         <div style='text-align:center;font-size:11px;color:#b2bec3;margin-top:20px'>
@@ -409,14 +451,15 @@ with st.sidebar:
 
     st.markdown(f"""
     <div style='font-size:11px;color:rgba(255,255,255,0.5);text-align:center;margin-bottom:6px'>
-    👤 Login sebagai: <strong style='color:#c8a84b'>{NAMA_USER}</strong>
+    👤 Login sebagai: <strong style='color:#c8a84b'>{NAMA_USER}</strong><br>
+    <span style='font-size:10px;opacity:0.7'>{ROLE_LABEL.get(ROLE, ROLE)}</span>
     </div>
     """, unsafe_allow_html=True)
 
     st.markdown("<div style='font-size:10px;text-transform:uppercase;letter-spacing:1.5px;opacity:0.45;padding:12px 0 4px;font-weight:600'>Menu Utama</div>", unsafe_allow_html=True)
 
-    if ROLE == 'keuangan':
-        menu_options = ["🏠 Dashboard", "📊 Monitoring Bulanan", "📈 Analisis & Proyeksi", "📐 Regresi Linear"]
+    if ROLE in FULL_ACCESS_ROLES:
+        menu_options = ["🏠 Dashboard", "📊 Monitoring Bulanan", "📈 Analisis & Proyeksi", "📐 Regresi Linear", "👥 Manajemen User"]
     else:
         menu_options = ["🏠 Dashboard", "📊 Monitoring Bulanan"]
 
@@ -427,6 +470,13 @@ with st.sidebar:
         <div style='background:rgba(200,168,75,0.15);border-radius:8px;padding:8px 12px;
                     margin-top:8px;font-size:11px;color:#c8a84b;text-align:center'>
         🔒 Akses: <b>{SEKSI_AKSES} — {SEKSI_NAMA[SEKSI_AKSES]}</b>
+        </div>
+        """, unsafe_allow_html=True)
+    elif ROLE in FULL_ACCESS_ROLES:
+        st.markdown(f"""
+        <div style='background:rgba(0,184,148,0.15);border-radius:8px;padding:8px 12px;
+                    margin-top:8px;font-size:11px;color:#00b894;text-align:center'>
+        🔓 Akses: <b>Seluruh Seksi (S1–S6)</b>
         </div>
         """, unsafe_allow_html=True)
 
@@ -456,9 +506,9 @@ if halaman == "🏠 Dashboard":
         </div>
         """, unsafe_allow_html=True)
 
-    tampil_seksi = SEKSI_LIST if ROLE == 'keuangan' else [SEKSI_AKSES]
+    tampil_seksi = SEKSI_LIST if ROLE in FULL_ACCESS_ROLES else [SEKSI_AKSES]
 
-    if ROLE == 'keuangan':
+    if ROLE in FULL_ACCESS_ROLES:
         c1,c2,c3,c4 = st.columns(4)
         cards = [
             (c1,"💼",f"Rp {summary['total_pagu']:,.0f}",f"Total Pagu {tahun_ref}","6 Seksi","linear-gradient(135deg,#1a3a6b,#2e6da4)"),
@@ -499,7 +549,7 @@ if halaman == "🏠 Dashboard":
     with col1:
         st.markdown('<div class="chart-card">', unsafe_allow_html=True)
         st.markdown('<div class="chart-title">🎯 Capaian Realisasi</div>', unsafe_allow_html=True)
-        pct_gauge = summary['pct_realisasi'] if ROLE == 'keuangan' else summary['per_seksi'][SEKSI_AKSES]['realisasi_pct']
+        pct_gauge = summary['pct_realisasi'] if ROLE in FULL_ACCESS_ROLES else summary['per_seksi'][SEKSI_AKSES]['realisasi_pct']
         fig_gauge = go.Figure(go.Indicator(
             mode="gauge+number",
             value=pct_gauge,
@@ -559,7 +609,7 @@ if halaman == "🏠 Dashboard":
     st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
     st.markdown('</div>', unsafe_allow_html=True)
 
-    if ROLE == 'keuangan':
+    if ROLE in FULL_ACCESS_ROLES:
         st.markdown('<div class="chart-card">', unsafe_allow_html=True)
         st.markdown('<div class="chart-title">🚀 Akses Cepat</div>', unsafe_allow_html=True)
         qa1, qa2 = st.columns(2)
@@ -584,7 +634,7 @@ elif halaman == "📊 Monitoring Bulanan":
 
     st.markdown("<br>", unsafe_allow_html=True)
 
-    tampil_seksi_mon = SEKSI_LIST if ROLE == 'keuangan' else [SEKSI_AKSES]
+    tampil_seksi_mon = SEKSI_LIST if ROLE in FULL_ACCESS_ROLES else [SEKSI_AKSES]
 
     cols = st.columns(min(3, len(tampil_seksi_mon)))
     card_colors = ['#2196F3','#4CAF50','#FF9800','#E91E63','#9C27B0','#00BCD4']
@@ -1216,3 +1266,129 @@ elif halaman == "📐 Regresi Linear":
                          'Substitusi': f"Ŷ = {a_k} + ({b_k})×{i+1}",
                          f'Proyeksi {tahun_baru+1} (%)': proj_next[i]} for i in range(11)]
             st.dataframe(pd.DataFrame(tbl_kalk), use_container_width=True, hide_index=True)
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# HALAMAN 5 — MANAJEMEN USER (khusus Admin Keuangan, Kepala Kantor, Kasubbag TU)
+# ═══════════════════════════════════════════════════════════════════════════════
+elif halaman == "👥 Manajemen User":
+    st.markdown("<h4 style='color:#1a3a6b;font-weight:800;margin-bottom:4px'>👥 Manajemen User</h4>", unsafe_allow_html=True)
+
+    st.markdown("""
+    <div style='background:#fff3cd;border-radius:10px;padding:12px 18px;margin-bottom:20px;
+                border-left:4px solid #c8a84b;font-size:12.5px;line-height:1.7'>
+    ⚠️ <b>Catatan penting:</b> Perubahan (tambah/hapus user) disimpan di file <code>users_data.json</code>
+    di server. Karena <b>Streamlit Community Cloud</b> bisa mereset filesystem-nya saat app di-reboot
+    atau kode di-push ulang, daftar user yang baru diubah lewat menu ini <b>bisa balik ke versi lama</b>
+    setelah reboot. Supaya perubahan permanen, klik tombol <b>"⬇️ Download backup"</b> di tab "Daftar User"
+    lalu replace/commit file <code>users_data.json</code> itu di repo GitHub.
+    </div>
+    """, unsafe_allow_html=True)
+
+    tab_list, tab_add, tab_del = st.tabs(["📋 Daftar User", "➕ Tambah Pegawai", "🗑️ Hapus Pegawai"])
+
+    # ── TAB: DAFTAR USER ─────────────────────────────────────────────────────
+    with tab_list:
+        rows_u = []
+        for uname, info in USERS.items():
+            role_disp = ROLE_LABEL.get(info.get('role',''), info.get('role',''))
+            if info.get('role') == 'seksi':
+                seksi_disp = f"{info.get('seksi','—')} — {SEKSI_NAMA.get(info.get('seksi',''), '')}"
+            else:
+                seksi_disp = "Seluruh Seksi (S1–S6)"
+            rows_u.append({
+                'Username': uname,
+                'Nama': info.get('nama', '—'),
+                'Role': role_disp,
+                'Akses': seksi_disp,
+            })
+        st.dataframe(pd.DataFrame(rows_u), use_container_width=True, hide_index=True)
+
+        st.markdown(f"<div style='font-size:12px;color:#636e72;margin-top:4px'>Total user terdaftar: <b>{len(USERS)}</b></div>", unsafe_allow_html=True)
+
+        users_json_str = json.dumps(USERS, indent=2, ensure_ascii=False)
+        st.download_button(
+            "⬇️ Download backup users_data.json",
+            data=users_json_str,
+            file_name="users_data.json",
+            mime="application/json",
+            use_container_width=False,
+        )
+
+    # ── TAB: TAMBAH PEGAWAI ──────────────────────────────────────────────────
+    with tab_add:
+        st.markdown("**Tambah Pegawai / Akun Baru**")
+        with st.form("form_tambah_user", clear_on_submit=True):
+            c1, c2 = st.columns(2)
+            with c1:
+                new_nama = st.text_input("Nama Pegawai")
+                new_username = st.text_input("Username (untuk login)")
+            with c2:
+                new_password = st.text_input("Password", type="password")
+                new_role_disp = st.selectbox(
+                    "Role / Jabatan",
+                    ["Pegawai Seksi", "Admin Keuangan", "Kepala Kantor", "Kasubbag Tata Usaha"]
+                )
+            new_seksi = None
+            if new_role_disp == "Pegawai Seksi":
+                new_seksi = st.selectbox(
+                    "Seksi", SEKSI_LIST, format_func=lambda x: f"{x} — {SEKSI_NAMA[x]}"
+                )
+            else:
+                st.caption("ℹ️ Role ini otomatis mendapat akses ke **seluruh seksi (S1–S6)**.")
+            submit_add = st.form_submit_button("➕ Tambahkan User", type="primary", use_container_width=True)
+
+        if submit_add:
+            role_map_rev = {
+                "Pegawai Seksi": "seksi",
+                "Admin Keuangan": "keuangan",
+                "Kepala Kantor": "kepala_kantor",
+                "Kasubbag Tata Usaha": "kasubbag_tu",
+            }
+            new_username_clean = new_username.strip()
+            if not new_nama or not new_username_clean or not new_password:
+                st.error("❌ Nama, username, dan password wajib diisi.")
+            elif " " in new_username_clean:
+                st.error("❌ Username tidak boleh mengandung spasi.")
+            elif new_username_clean in USERS:
+                st.error(f"❌ Username '{new_username_clean}' sudah dipakai. Pilih username lain.")
+            else:
+                new_entry = {
+                    "password": new_password,
+                    "role": role_map_rev[new_role_disp],
+                    "nama": new_nama.strip(),
+                }
+                if role_map_rev[new_role_disp] == "seksi":
+                    new_entry["seksi"] = new_seksi
+                USERS[new_username_clean] = new_entry
+                save_users(USERS)
+                st.success(f"✅ User '{new_username_clean}' ({new_nama}) berhasil ditambahkan sebagai {new_role_disp}.")
+                st.rerun()
+
+    # ── TAB: HAPUS PEGAWAI ───────────────────────────────────────────────────
+    with tab_del:
+        st.markdown("**Hapus Pegawai / Akun**")
+        deletable_users = [u for u in USERS.keys() if u != st.session_state.get('username')]
+
+        if not deletable_users:
+            st.info("Tidak ada user lain yang bisa dihapus.")
+        else:
+            target_user = st.selectbox(
+                "Pilih user yang akan dihapus",
+                deletable_users,
+                format_func=lambda x: f"{x} — {USERS[x].get('nama','')} ({ROLE_LABEL.get(USERS[x].get('role',''), USERS[x].get('role',''))})"
+            )
+            info_del = USERS[target_user]
+            st.markdown(f"""
+            <div style='background:#f8d7da;border-radius:8px;padding:10px 16px;margin:10px 0;font-size:13px;color:#721c24'>
+            Akan menghapus: <b>{info_del.get('nama','—')}</b> (username: <code>{target_user}</code>,
+            role: {ROLE_LABEL.get(info_del.get('role',''), info_del.get('role',''))})
+            </div>
+            """, unsafe_allow_html=True)
+            confirm_del = st.checkbox(f"Saya yakin ingin menghapus akun '{target_user}'")
+            if st.button("🗑️ Hapus User", type="primary", disabled=not confirm_del):
+                del USERS[target_user]
+                save_users(USERS)
+                st.success(f"✅ User '{target_user}' berhasil dihapus.")
+                st.rerun()
+
+        st.caption("ℹ️ Anda tidak bisa menghapus akun yang sedang Anda gunakan untuk login (mencegah Anda terkunci dari sistem).")
