@@ -1544,5 +1544,3 @@ elif halaman == "👥 Manajemen User":
                 st.success(f"✅ Akun '{target_user}' berhasil dihapus.")
                 st.rerun()
         st.caption("ℹ️ Anda tidak bisa menghapus akun yang sedang digunakan untuk login.")
-ENDOFFILE
-echo "Done"
