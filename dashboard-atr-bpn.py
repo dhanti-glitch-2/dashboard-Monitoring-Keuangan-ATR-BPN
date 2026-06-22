@@ -14,62 +14,35 @@ st.set_page_config(
 )
 
 # ─── LOGIN & MANAJEMEN USER ──────────────────────────────────────────────────
-# User disimpan di file users_data.json (di folder yang sama dengan app ini),
-# supaya bisa ditambah/dihapus dari dalam app (menu "Manajemen User") tanpa
-# perlu ubah kode. DEFAULT_USERS di bawah ini cuma dipakai SEKALI sebagai
-# data awal — kalau file users_data.json sudah ada, isinya itu yang dipakai.
-#
-# PENTING (keterbatasan Streamlit Community Cloud): file ini bisa ke-reset
-# ke versi default setiap kali app di-reboot / repo di-push ulang, karena
-# filesystem server-nya tidak permanen. Jadi setelah nambah/hapus user lewat
-# menu "Manajemen User", SEBAIKNYA download backup users_data.json (ada
-# tombolnya di menu itu) lalu commit/replace file itu di repo GitHub supaya
-# datanya gak balik ke versi lama.
-
 ROLE_LABEL = {
     'keuangan':     'Admin Keuangan',
     'kepala_kantor':'Kepala Kantor',
     'kasubbag_tu':  'Kasubbag Tata Usaha',
     'seksi':        'Admin Seksi',
 }
-# Role-role ini punya akses ke SEMUA seksi (S1-S6) + menu Analisis/Regresi/Manajemen User
 FULL_ACCESS_ROLES = ['keuangan', 'kepala_kantor', 'kasubbag_tu']
 
 USERS_FILE = os.path.join(os.path.dirname(__file__), 'users_data.json')
 
 DEFAULT_USERS = {
-    # ── Akses penuh: semua seksi (S1–S6) ────────────────────────────────────
     "admin":         {"password": "atrbpn2025",  "role": "keuangan",     "nama": "Admin Keuangan"},
     "kepala.kantor": {"password": "kepala2025",  "role": "kepala_kantor","nama": "Kepala Kantor"},
     "kasubbag.tu":   {"password": "kasubbag2025","role": "kasubbag_tu",  "nama": "Kasubbag Tata Usaha"},
-
-    # ── Seksi 1 — Survei & Pemetaan ──────────────────────────────────────────
     "andi.s1":   {"password": "andi2025",   "role": "seksi", "seksi": "S1", "nama": "Andi Wijaya"},
     "siti.s1":   {"password": "siti2025",   "role": "seksi", "seksi": "S1", "nama": "Siti Rahma"},
-
-    # ── Seksi 2 — Penetapan Hak & Pendaftaran ───────────────────────────────
     "budi.s2":   {"password": "budi2025",   "role": "seksi", "seksi": "S2", "nama": "Budi Santoso"},
     "rina.s2":   {"password": "rina2025",   "role": "seksi", "seksi": "S2", "nama": "Rina Putri"},
-
-    # ── Seksi 3 — Penataan & Pemberdayaan ───────────────────────────────────
     "doni.s3":   {"password": "doni2025",   "role": "seksi", "seksi": "S3", "nama": "Doni Saputra"},
     "wati.s3":   {"password": "wati2025",   "role": "seksi", "seksi": "S3", "nama": "Wati Susanti"},
-
-    # ── Seksi 4 — Pengadaan Tanah & Pengembangan ────────────────────────────
     "eko.s4":    {"password": "eko2025",    "role": "seksi", "seksi": "S4", "nama": "Eko Prasetyo"},
     "lina.s4":   {"password": "lina2025",   "role": "seksi", "seksi": "S4", "nama": "Lina Marlina"},
-
-    # ── Seksi 5 — Pengendalian & Sengketa ───────────────────────────────────
     "fajar.s5":  {"password": "fajar2025",  "role": "seksi", "seksi": "S5", "nama": "Fajar Hidayat"},
     "dewi.s5":   {"password": "dewi2025",   "role": "seksi", "seksi": "S5", "nama": "Dewi Lestari"},
-
-    # ── Seksi 6 — Sub Bag Tata Usaha (staf biasa, BUKAN kasubbag) ───────────
     "gilang.s6": {"password": "gilang2025", "role": "seksi", "seksi": "S6", "nama": "Gilang Ramadhan"},
     "yuni.s6":   {"password": "yuni2025",   "role": "seksi", "seksi": "S6", "nama": "Yuni Astuti"},
 }
 
 def load_users():
-    """Baca daftar user dari file JSON. Kalau file belum ada, buat dari DEFAULT_USERS."""
     if os.path.exists(USERS_FILE):
         try:
             with open(USERS_FILE, 'r', encoding='utf-8') as f:
@@ -82,7 +55,6 @@ def load_users():
     return dict(DEFAULT_USERS)
 
 def save_users(users_dict):
-    """Simpan daftar user ke file JSON."""
     with open(USERS_FILE, 'w', encoding='utf-8') as f:
         json.dump(users_dict, f, indent=2, ensure_ascii=False)
 
@@ -165,14 +137,18 @@ SEKSI_NAMA = {
 COLORS = ['#1a3a6b','#00b894','#e17055','#c8a84b','#9b59b6','#2e86de']
 SEKSI_COLORS = dict(zip(SEKSI_LIST, COLORS))
 
-# Koefisien regresi HARDCODE dari laporan SPSS (X=indeks bulan, Y=% non-kumulatif)
+# ─── REGRESI ─────────────────────────────────────────────────────────────────
+# Koefisien dari laporan SPSS. Risiko diklasifikasikan berdasarkan MAE:
+#   Rendah  → MAE ≤ 1%   (prediksi sangat akurat)
+#   Sedang  → 1% < MAE ≤ 3%  (prediksi cukup baik)
+#   Tinggi  → MAE > 3%   (prediksi kurang akurat, perlu perhatian)
 REGRESI = {
-    'S1': {'a': 10.201, 'b': -0.331, 'mae': 2.53,  'risiko': 'Sedang'},
-    'S2': {'a': 10.390, 'b': -0.350, 'mae': 0.44,  'risiko': 'Rendah'},
-    'S3': {'a':  8.371, 'b': -0.279, 'mae': 4.99,  'risiko': 'Tinggi'},
-    'S4': {'a': 10.974, 'b': -0.422, 'mae': 0.01,  'risiko': 'Tinggi'},
-    'S5': {'a': 10.312, 'b': -0.324, 'mae': 0.03,  'risiko': 'Sedang'},
-    'S6': {'a': 11.724, 'b': -0.446, 'mae': 0.01,  'risiko': 'Rendah'},
+    'S1': {'a': 10.201, 'b': -0.331, 'mae': 2.53,  'risiko': 'Sedang'},   # 1% < 2.53% ≤ 3%
+    'S2': {'a': 10.390, 'b': -0.350, 'mae': 0.44,  'risiko': 'Rendah'},   # 0.44% ≤ 1%
+    'S3': {'a':  8.371, 'b': -0.279, 'mae': 4.99,  'risiko': 'Tinggi'},   # 4.99% > 3%
+    'S4': {'a': 10.974, 'b': -0.422, 'mae': 0.01,  'risiko': 'Rendah'},   # 0.01% ≤ 1%
+    'S5': {'a': 10.312, 'b': -0.324, 'mae': 0.03,  'risiko': 'Rendah'},   # 0.03% ≤ 1%
+    'S6': {'a': 11.724, 'b': -0.446, 'mae': 0.01,  'risiko': 'Rendah'},   # 0.01% ≤ 1%
 }
 
 # Tren historis (% realisasi tahunan dari pagu)
@@ -316,13 +292,13 @@ def badge_color(pct):
 def risiko_color(risiko):
     return {'Rendah':'#00b894','Sedang':'#fdcb6e','Tinggi':'#d63031'}.get(risiko,'#636e72')
 
-# ─── REGRESI ─────────────────────────────────────────────────────────────────
+# ─── HITUNG REGRESI ───────────────────────────────────────────────────────────
 @st.cache_data
 def compute_all_regresi(_df):
     """
-    Tahap 1: Koefisien a1, b1 HARDCODE dari laporan SPSS.
-             Proyeksi 2026 = substitusi X=1..11 ke persamaan SPSS.
-    Tahap 2: Pool data aktual 2018-2025 + proj2026, fit ulang otomatis.
+    Tahap 1: Koefisien a, b dari laporan SPSS (hardcode).
+             Proyeksi 2026 = substitusi X=1..11 ke persamaan Tahap 1.
+    Tahap 2: Pool data aktual 2018-2025 + proyeksi 2026 → fit ulang otomatis.
              Proyeksi 2027 = substitusi X=1..11 ke persamaan Tahap 2.
     """
     tahun_aktual = list(range(2018, 2026))
@@ -344,7 +320,6 @@ def compute_all_regresi(_df):
 
     hasil = {}
     for s in SEKSI_LIST:
-        # Kumpulkan data aktual (untuk scatter plot & Tahap 2)
         x_gabung, y_gabung = [], []
         for tahun in tahun_aktual:
             pct_list = get_pct_bulanan(_df, s, tahun)
@@ -352,7 +327,6 @@ def compute_all_regresi(_df):
                 x_gabung.append(bi + 1)
                 y_gabung.append(pct)
 
-        # ── TAHAP 1: HARDCODE dari laporan SPSS ──────────────────────────────
         a1 = REGRESI[s]['a']
         b1 = REGRESI[s]['b']
         mae1 = REGRESI[s]['mae']
@@ -361,10 +335,8 @@ def compute_all_regresi(_df):
         ss_tot1 = sum((y - float(np.mean(y_gabung)))**2 for y in y_gabung)
         r2_1 = round(1 - ss_res1/ss_tot1, 4) if ss_tot1 != 0 else 0.0
 
-        # Proyeksi 2026: substitusi X=1..11 ke persamaan SPSS
         proj2026 = [max(0.0, round(a1 + b1*x, 4)) for x in range(1, 12)]
 
-        # ── TAHAP 2: fit ulang 2018-2025 + proj2026 ──────────────────────────
         x_gabung2 = x_gabung.copy()
         y_gabung2 = y_gabung.copy()
         for bi, pct in enumerate(proj2026):
@@ -372,8 +344,6 @@ def compute_all_regresi(_df):
             y_gabung2.append(pct)
 
         a2, b2, r2_2, mae2, y_pred_gabung2 = regresi_ols(x_gabung2, y_gabung2)
-
-        # Proyeksi 2027: substitusi X=1..11 ke persamaan Tahap 2
         proj2027 = [max(0.0, round(a2 + b2*x, 4)) for x in range(1, 12)]
 
         hasil[s] = {
@@ -436,6 +406,25 @@ st.markdown("""
 .badge-warning { background:#fff3cd; color:#856404; padding:3px 10px; border-radius:50px; font-size:11px; font-weight:700; }
 .badge-danger  { background:#f8d7da; color:#721c24; padding:3px 10px; border-radius:50px; font-size:11px; font-weight:700; }
 .stMetric { background:white; border-radius:12px; padding:16px !important; box-shadow:0 2px 12px rgba(0,0,0,0.06); }
+.info-box {
+  background:#e8f4fd; border-radius:10px; padding:14px 18px;
+  margin-bottom:16px; border-left:4px solid #1a3a6b;
+  font-size:13px; line-height:1.7;
+}
+.info-box-green {
+  background:#e8fdf5; border-radius:10px; padding:14px 18px;
+  margin-bottom:16px; border-left:4px solid #00b894;
+  font-size:13px; line-height:1.7;
+}
+.info-box-yellow {
+  background:#fffbea; border-radius:10px; padding:14px 18px;
+  margin-bottom:16px; border-left:4px solid #c8a84b;
+  font-size:13px; line-height:1.7;
+}
+.keterangan-box {
+  background:#f8f9fa; border-radius:10px; padding:16px 20px;
+  margin-top:8px; font-size:13px; line-height:1.8;
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -491,7 +480,15 @@ with st.sidebar:
 # HALAMAN 1 — DASHBOARD
 # ═══════════════════════════════════════════════════════════════════════════════
 if halaman == "🏠 Dashboard":
-    st.markdown("<h4 style='color:#1a3a6b;font-weight:800;margin-bottom:24px'>🏠 Dashboard — Ringkasan Anggaran</h4>", unsafe_allow_html=True)
+    st.markdown("<h4 style='color:#1a3a6b;font-weight:800;margin-bottom:4px'>🏠 Dashboard — Ringkasan Anggaran</h4>", unsafe_allow_html=True)
+    st.markdown("""
+    <div class='info-box'>
+    📌 <b>Tentang halaman ini:</b> Dashboard menampilkan ringkasan realisasi anggaran seluruh seksi
+    untuk tahun yang dipilih. <b>Pagu</b> adalah jumlah anggaran yang dialokasikan,
+    <b>Realisasi</b> adalah anggaran yang sudah terserap/digunakan, dan
+    <b>Sisa Pagu</b> adalah selisih anggaran yang belum digunakan hingga akhir data.
+    </div>
+    """, unsafe_allow_html=True)
 
     tahun_list_db = sorted(df['Tahun'].unique().tolist(), reverse=True)
     tahun_ref = st.selectbox("📅 Pilih Tahun", tahun_list_db, index=0, key='db_tahun')
@@ -511,8 +508,8 @@ if halaman == "🏠 Dashboard":
     if ROLE in FULL_ACCESS_ROLES:
         c1,c2,c3,c4 = st.columns(4)
         cards = [
-            (c1,"💼",f"Rp {summary['total_pagu']:,.0f}",f"Total Pagu {tahun_ref}","6 Seksi","linear-gradient(135deg,#1a3a6b,#2e6da4)"),
-            (c2,"✅",f"Rp {summary['total_realisasi']:,.0f}","Total Realisasi",f"{summary['pct_realisasi']}% tercapai","linear-gradient(135deg,#00b894,#00cec9)"),
+            (c1,"💼",f"Rp {summary['total_pagu']:,.0f}",f"Total Pagu {tahun_ref}","Jumlah anggaran dialokasikan","linear-gradient(135deg,#1a3a6b,#2e6da4)"),
+            (c2,"✅",f"Rp {summary['total_realisasi']:,.0f}","Total Realisasi",f"{summary['pct_realisasi']}% terserap","linear-gradient(135deg,#00b894,#00cec9)"),
             (c3,"⏳",f"Rp {summary['sisa_pagu']:,.0f}","Sisa Pagu",f"{summary['sisa_pct']}% belum terserap","linear-gradient(135deg,#e17055,#d63031)"),
             (c4,"📊",f"{summary['pct_realisasi']}%","% Realisasi Keseluruhan",f"Tahun {tahun_ref}","linear-gradient(135deg,#c8a84b,#f9ca24)"),
         ]
@@ -530,7 +527,7 @@ if halaman == "🏠 Dashboard":
         c1,c2,c3 = st.columns(3)
         cards_s = [
             (c1,"💼",f"Rp {d['pagu']:,.0f}",f"Pagu {SEKSI_AKSES}",f"Tahun {tahun_ref}","linear-gradient(135deg,#1a3a6b,#2e6da4)"),
-            (c2,"✅",f"Rp {d['realisasi_rp']:,.0f}","Realisasi",f"{d['realisasi_pct']}% tercapai","linear-gradient(135deg,#00b894,#00cec9)"),
+            (c2,"✅",f"Rp {d['realisasi_rp']:,.0f}","Realisasi",f"{d['realisasi_pct']}% terserap","linear-gradient(135deg,#00b894,#00cec9)"),
             (c3,"⏳",f"Rp {d['pagu']-d['realisasi_rp']:,.0f}","Sisa Pagu",f"{round(100-d['realisasi_pct'],2)}% belum terserap","linear-gradient(135deg,#e17055,#d63031)"),
         ]
         for col, icon, val, lbl, sub, grad in cards_s:
@@ -549,6 +546,7 @@ if halaman == "🏠 Dashboard":
     with col1:
         st.markdown('<div class="chart-card">', unsafe_allow_html=True)
         st.markdown('<div class="chart-title">🎯 Capaian Realisasi</div>', unsafe_allow_html=True)
+        st.caption("Gauge (indikator jarum) menunjukkan persentase anggaran yang sudah terserap. Garis kuning = target 85%.")
         pct_gauge = summary['pct_realisasi'] if ROLE in FULL_ACCESS_ROLES else summary['per_seksi'][SEKSI_AKSES]['realisasi_pct']
         fig_gauge = go.Figure(go.Indicator(
             mode="gauge+number",
@@ -573,6 +571,7 @@ if halaman == "🏠 Dashboard":
     with col2:
         st.markdown('<div class="chart-card">', unsafe_allow_html=True)
         st.markdown('<div class="chart-title">📊 Realisasi per Seksi</div>', unsafe_allow_html=True)
+        st.caption("Batang hijau = realisasi ≥ 80% (baik), kuning = 50–79% (perlu perhatian), merah = < 50% (kritis). Garis putus-putus kuning = target 85%.")
         seksi_names = [summary['per_seksi'][s]['nama'] for s in tampil_seksi]
         seksi_pcts  = [summary['per_seksi'][s]['realisasi_pct'] for s in tampil_seksi]
         bar_colors  = ['#00b894' if v>=80 else '#fdcb6e' if v>=50 else '#d63031' for v in seksi_pcts]
@@ -607,6 +606,7 @@ if halaman == "🏠 Dashboard":
             '% Realisasi': f"{badge}{pct_v}%",
         })
     st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
+    st.caption("🟢 ≥ 80% (baik)  |  🟡 50–79% (perlu perhatian)  |  🔴 < 50% (kritis)")
     st.markdown('</div>', unsafe_allow_html=True)
 
     if ROLE in FULL_ACCESS_ROLES:
@@ -614,9 +614,9 @@ if halaman == "🏠 Dashboard":
         st.markdown('<div class="chart-title">🚀 Akses Cepat</div>', unsafe_allow_html=True)
         qa1, qa2 = st.columns(2)
         with qa1:
-            st.info("📊 **Monitoring Bulanan** — Pantau sisa pagu & pertumbuhan per seksi.")
+            st.info("📊 **Monitoring Bulanan** — Pantau sisa pagu & pertumbuhan realisasi per bulan untuk setiap seksi.")
         with qa2:
-            st.info("📈 **Analisis & Proyeksi** — Lihat proyeksi 2026–2027 & analisis risiko.")
+            st.info("📈 **Analisis & Proyeksi** — Lihat proyeksi realisasi 2026–2027 dan analisis risiko penyerapan anggaran.")
         st.markdown('</div>', unsafe_allow_html=True)
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -624,6 +624,16 @@ if halaman == "🏠 Dashboard":
 # ═══════════════════════════════════════════════════════════════════════════════
 elif halaman == "📊 Monitoring Bulanan":
     st.markdown("<h4 style='color:#1a3a6b;font-weight:800;margin-bottom:8px'>📊 Monitoring Realisasi Bulanan</h4>", unsafe_allow_html=True)
+    st.markdown("""
+    <div class='info-box'>
+    📌 <b>Tentang halaman ini:</b> Halaman ini memantau penyerapan anggaran setiap seksi
+    per bulan pada tahun yang dipilih. Pilih tahun dan bulan batas akhir untuk melihat
+    kondisi realisasi sampai bulan tersebut.<br><br>
+    <b>Pagu</b> = total anggaran yang dialokasikan &nbsp;|&nbsp;
+    <b>Realisasi</b> = anggaran yang sudah terserap &nbsp;|&nbsp;
+    <b>Sisa Pagu</b> = anggaran yang belum digunakan
+    </div>
+    """, unsafe_allow_html=True)
 
     fc1, fc2, fc3 = st.columns([1,1,4])
     with fc1:
@@ -696,6 +706,7 @@ elif halaman == "📊 Monitoring Bulanan":
     with col1:
         st.markdown('<div class="chart-card">', unsafe_allow_html=True)
         st.markdown('<div class="chart-title">📈 Kumulatif % Realisasi per Bulan</div>', unsafe_allow_html=True)
+        st.caption("Grafik ini menunjukkan total penyerapan anggaran yang terakumulasi dari bulan ke bulan. Semakin curam naik di awal = penyerapan lebih merata.")
         sel_kum = st.selectbox("Pilih Seksi", tampil_seksi_mon, key='kum_seksi',
                                format_func=lambda x: f"{x} — {SEKSI_NAMA[x]}")
         d = hasil_monitoring[sel_kum]
@@ -710,7 +721,7 @@ elif halaman == "📊 Monitoring Bulanan":
             margin=dict(t=10,b=60,l=45,r=10),
             paper_bgcolor='rgba(0,0,0,0)',plot_bgcolor='#fafafa',
             xaxis=dict(tickangle=-30,gridcolor='#f0f0f0'),
-            yaxis=dict(title='%',gridcolor='#f0f0f0'),
+            yaxis=dict(title='% Kumulatif',gridcolor='#f0f0f0'),
             height=300,font=dict(family='Segoe UI',size=12)
         )
         st.plotly_chart(fig_kum, use_container_width=True, config={'displayModeBar':False})
@@ -719,6 +730,7 @@ elif halaman == "📊 Monitoring Bulanan":
     with col2:
         st.markdown('<div class="chart-card">', unsafe_allow_html=True)
         st.markdown('<div class="chart-title">🌊 Pertumbuhan Serapan per Bulan</div>', unsafe_allow_html=True)
+        st.caption("Grafik ini menunjukkan pertambahan (atau penurunan) penyerapan setiap bulan. Batang hijau = ada penambahan realisasi, merah = realisasi turun dari bulan sebelumnya.")
         sel_delta = st.selectbox("Pilih Seksi", tampil_seksi_mon, key='delta_seksi',
                                  format_func=lambda x: f"{x} — {SEKSI_NAMA[x]}")
         d2 = hasil_monitoring[sel_delta]
@@ -732,7 +744,7 @@ elif halaman == "📊 Monitoring Bulanan":
             margin=dict(t=10,b=60,l=45,r=10),
             paper_bgcolor='rgba(0,0,0,0)',plot_bgcolor='#fafafa',
             xaxis=dict(tickangle=-30,gridcolor='#f0f0f0'),
-            yaxis=dict(title='%',gridcolor='#f0f0f0',zeroline=True,zerolinecolor='#ccc'),
+            yaxis=dict(title='% Perubahan',gridcolor='#f0f0f0',zeroline=True,zerolinecolor='#ccc'),
             height=300,font=dict(family='Segoe UI',size=12)
         )
         st.plotly_chart(fig_delta, use_container_width=True, config={'displayModeBar':False})
@@ -740,6 +752,7 @@ elif halaman == "📊 Monitoring Bulanan":
 
     st.markdown('<div class="chart-card">', unsafe_allow_html=True)
     st.markdown('<div class="chart-title">📋 Tabel % Realisasi Bulanan per Seksi</div>', unsafe_allow_html=True)
+    st.caption("Angka di setiap kolom bulan adalah persentase realisasi NON-KUMULATIF (hanya bulan itu saja, bukan total). Kolom 'Kumulatif' adalah total penyerapan dari Februari s/d Desember.")
     rows = []
     for s in tampil_seksi_mon:
         d = hasil_monitoring[s]
@@ -752,18 +765,39 @@ elif halaman == "📊 Monitoring Bulanan":
         row['Sisa (%)'] = f"{'🟢' if sp<=20 else '🟡' if sp<=50 else '🔴'} {sp}%"
         rows.append(row)
     st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
+    st.caption("Kolom 'Sisa (%)': 🟢 ≤ 20% sisa (hampir habis terserap)  |  🟡 21–50% sisa  |  🔴 > 50% sisa (penyerapan rendah)")
     st.markdown('</div>', unsafe_allow_html=True)
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # HALAMAN 3 — ANALISIS & PROYEKSI
 # ═══════════════════════════════════════════════════════════════════════════════
 elif halaman == "📈 Analisis & Proyeksi":
-    st.markdown("<h4 style='color:#1a3a6b;font-weight:800;margin-bottom:8px'>📈 Analisis & Proyeksi Realisasi Anggaran</h4>", unsafe_allow_html=True)
+    st.markdown("<h4 style='color:#1a3a6b;font-weight:800;margin-bottom:4px'>📈 Analisis & Proyeksi Realisasi Anggaran</h4>", unsafe_allow_html=True)
+    st.markdown("""
+    <div class='info-box'>
+    📌 <b>Tentang halaman ini:</b> Halaman ini menyajikan hasil proyeksi realisasi anggaran
+    untuk tahun 2026 dan 2027 menggunakan metode regresi linear sederhana, serta analisis
+    tren historis dan klasifikasi risiko penyerapan anggaran per seksi.
+    </div>
+    """, unsafe_allow_html=True)
 
     tab_proj, tab_tren, tab_risiko = st.tabs(["📅 Proyeksi 2026–2027","📉 Tren 2018–2027","⚠️ Risiko & Toleransi"])
 
+    # ── TAB PROYEKSI ──────────────────────────────────────────────────────────
     with tab_proj:
         st.markdown("### 📅 Proyeksi Realisasi Bulanan per Seksi")
+        st.markdown("""
+        <div class='info-box'>
+        📌 <b>Apa itu proyeksi?</b> Proyeksi adalah perkiraan realisasi anggaran di masa depan
+        berdasarkan pola historis yang dihitung menggunakan persamaan regresi linear.
+        Nilai yang ditampilkan adalah <b>persentase realisasi non-kumulatif per bulan</b>
+        (bukan total tahunan) — artinya, berapa persen anggaran yang diperkirakan terserap
+        di tiap bulan tersebut.<br><br>
+        <b>2026</b> = dihitung langsung dari persamaan SPSS (data 2018–2025) &nbsp;|&nbsp;
+        <b>2027</b> = dihitung ulang dengan menggabungkan data 2018–2025 + proyeksi 2026
+        </div>
+        """, unsafe_allow_html=True)
+
         tahun_proj = st.radio("Pilih Tahun Proyeksi", ["2026","2027"], horizontal=True)
         proj_data  = PROYEKSI_2026 if tahun_proj == "2026" else PROYEKSI_2027
 
@@ -778,15 +812,16 @@ elif halaman == "📈 Analisis & Proyeksi":
             barmode='group',
             margin=dict(t=20,b=80,l=50,r=20),
             paper_bgcolor='rgba(0,0,0,0)',plot_bgcolor='#fafafa',
-            yaxis=dict(title='% Realisasi',gridcolor='#f0f0f0'),
+            yaxis=dict(title='% Realisasi per Bulan',gridcolor='#f0f0f0'),
             xaxis=dict(tickangle=-20),
             legend=dict(orientation='h',y=-0.3),
             height=420,font=dict(family='Segoe UI')
         )
         st.plotly_chart(fig_proj, use_container_width=True, config={'displayModeBar':False})
+        st.caption("Grafik batang berkelompok ini membandingkan proyeksi penyerapan anggaran tiap seksi di setiap bulan. Semakin tinggi batang = semakin besar penyerapan yang diperkirakan di bulan tersebut.")
 
-        # Tabel perbandingan 2026 vs 2027 side by side
         st.markdown("#### 📋 Perbandingan Proyeksi 2026 vs 2027 per Seksi")
+        st.caption("Tanda ↑ = proyeksi 2027 lebih tinggi dari 2026 (perkiraan penyerapan meningkat), ↓ = lebih rendah, = sama.")
         rows_cmp = []
         for s in SEKSI_LIST:
             row = {'Seksi': s, 'Nama': SEKSI_NAMA[s]}
@@ -803,7 +838,6 @@ elif halaman == "📈 Analisis & Proyeksi":
             rows_cmp.append(row)
         st.dataframe(pd.DataFrame(rows_cmp), use_container_width=True, hide_index=True)
 
-        # Tabel terpisah per tahun
         c1, c2 = st.columns(2)
         for col, tahun_t, pdata in [(c1,"2026",PROYEKSI_2026),(c2,"2027",PROYEKSI_2027)]:
             with col:
@@ -816,9 +850,20 @@ elif halaman == "📈 Analisis & Proyeksi":
                     row['Total'] = round(sum(pdata[s]),2)
                     rows.append(row)
                 st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
+        st.caption("'Total' = penjumlahan seluruh proyeksi bulanan (Feb–Des). Ini adalah estimasi total penyerapan tahunan dalam persentase.")
 
+    # ── TAB TREN ──────────────────────────────────────────────────────────────
     with tab_tren:
         st.markdown("### 📉 Tren Realisasi Anggaran Tahunan per Seksi (2018–2027)")
+        st.markdown("""
+        <div class='info-box'>
+        📌 <b>Cara membaca grafik ini:</b> Sumbu X adalah tahun, sumbu Y adalah total persentase
+        realisasi anggaran tahunan (berapa persen dari total pagu yang berhasil terserap dalam
+        satu tahun). Garis vertikal putus-putus memisahkan data <b>aktual</b> (2018–2025) dengan
+        <b>proyeksi</b> (2026–2027).
+        </div>
+        """, unsafe_allow_html=True)
+
         tahun_all = list(range(2018, 2028))
         fig_tren = go.Figure()
         for i, s in enumerate(SEKSI_LIST):
@@ -843,13 +888,14 @@ elif halaman == "📈 Analisis & Proyeksi":
             margin=dict(t=20,b=60,l=50,r=20),
             paper_bgcolor='rgba(0,0,0,0)',plot_bgcolor='#fafafa',
             xaxis=dict(title='Tahun',gridcolor='#f0f0f0'),
-            yaxis=dict(title='Total % Realisasi',gridcolor='#f0f0f0',range=[0,115]),
+            yaxis=dict(title='Total % Realisasi Tahunan',gridcolor='#f0f0f0',range=[0,115]),
             legend=dict(orientation='h',y=-0.25),
             height=420,font=dict(family='Segoe UI')
         )
         st.plotly_chart(fig_tren, use_container_width=True, config={'displayModeBar':False})
 
         st.markdown("**📋 Data Tren Realisasi Tahunan (%)**")
+        st.caption("Angka adalah persentase total pagu yang berhasil direalisasikan dalam satu tahun penuh. Kolom bertanda (P) = hasil proyeksi, bukan data aktual.")
         rows = []
         for s in SEKSI_LIST:
             row = {'Seksi': f"{s} — {SEKSI_NAMA[s]}"}
@@ -860,32 +906,69 @@ elif halaman == "📈 Analisis & Proyeksi":
             rows.append(row)
         st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
 
+    # ── TAB RISIKO ────────────────────────────────────────────────────────────
     with tab_risiko:
         st.markdown("### ⚠️ Klasifikasi Risiko & Toleransi Deviasi")
+        st.markdown("""
+        <div class='info-box'>
+        📌 <b>Apa itu MAE dan klasifikasi risiko?</b><br>
+        <b>MAE (Mean Absolute Error)</b> atau <i>Rata-rata Kesalahan Absolut</i> adalah ukuran
+        seberapa akurat persamaan regresi dalam memperkirakan realisasi aktual.
+        Semakin kecil MAE, semakin akurat proyeksinya.<br><br>
+        Contoh: MAE = 2% artinya rata-rata proyeksi meleset ±2% dari nilai aktual.<br><br>
+        <b>Klasifikasi risiko</b> didasarkan pada nilai MAE:<br>
+        🟢 <b>Rendah</b> → MAE ≤ 1% &nbsp; — proyeksi sangat akurat, deviasi sangat kecil<br>
+        🟡 <b>Sedang</b> → 1% &lt; MAE ≤ 3% &nbsp; — proyeksi cukup baik, deviasi dalam batas wajar<br>
+        🔴 <b>Tinggi</b> → MAE &gt; 3% &nbsp; — proyeksi kurang akurat, pola realisasi tidak konsisten
+        </div>
+        """, unsafe_allow_html=True)
+
         risiko_clr = {'Rendah':'#00b894','Sedang':'#fdcb6e','Tinggi':'#d63031'}
         c1, c2 = st.columns(2)
         with c1:
-            st.markdown("**🔴 Klasifikasi Risiko per Seksi (berdasarkan CV)**")
-            mae_vals  = [REGRESI[s]['mae'] for s in SEKSI_LIST]
+            st.markdown("**🔴 Klasifikasi Risiko per Seksi (berdasarkan MAE)**")
+            st.caption("Posisi bubble menunjukkan nilai MAE tiap seksi. Semakin tinggi bubble, semakin besar MAE-nya (risiko lebih tinggi). Ukuran bubble juga mencerminkan besarnya MAE.")
+            mae_vals    = [REGRESI[s]['mae'] for s in SEKSI_LIST]
             risiko_vals = [REGRESI[s]['risiko'] for s in SEKSI_LIST]
             bubble_colors = [risiko_clr[REGRESI[s]['risiko']] for s in SEKSI_LIST]
-            fig_risk = go.Figure(go.Scatter(
-                x=SEKSI_LIST, y=mae_vals,
-                mode='markers+text', text=risiko_vals, textposition='top center',
-                marker=dict(size=[v*12+20 for v in mae_vals],
-                            color=bubble_colors,line=dict(width=2,color='#fff')),
-            ))
-            fig_risk.add_hline(y=1,line_dash='dot',line_color='#fdcb6e',line_width=2)
-            fig_risk.add_hline(y=3,line_dash='dot',line_color='#d63031',line_width=2)
+
+            fig_risk = go.Figure()
+            for kategori in ['Tinggi', 'Sedang', 'Rendah']:
+                idx = [i for i, r in enumerate(risiko_vals) if r == kategori]
+                if not idx:
+                    continue
+                vals_k = [mae_vals[i] for i in idx]
+                fig_risk.add_trace(go.Scatter(
+                    x=[SEKSI_LIST[i] for i in idx],
+                    y=vals_k,
+                    mode='markers+text',
+                    name=kategori,
+                    text=[f"{v:.2f}%" for v in vals_k],
+                    textposition='top center',
+                    marker=dict(
+                        size=[max((v ** 0.5) * 16, 18) for v in vals_k],
+                        color=risiko_clr[kategori],
+                        line=dict(width=2, color='#fff'),
+                    ),
+                ))
+
+            fig_risk.add_hline(y=1, line_dash='dot', line_color='#fdcb6e', line_width=2,
+                                annotation_text='Batas Sedang (MAE = 1%)', annotation_position='top right')
+            fig_risk.add_hline(y=3, line_dash='dot', line_color='#d63031', line_width=2,
+                                annotation_text='Batas Tinggi (MAE = 3%)', annotation_position='top right')
             fig_risk.update_layout(
-                margin=dict(t=20,b=40,l=50,r=20),
+                margin=dict(t=20,b=60,l=50,r=20),
                 paper_bgcolor='rgba(0,0,0,0)',plot_bgcolor='#fafafa',
-                yaxis=dict(title='MAE (%)',gridcolor='#f0f0f0'),
-                height=360,font=dict(family='Segoe UI')
+                yaxis=dict(title='MAE — Rata-rata Kesalahan Absolut (%)',gridcolor='#f0f0f0'),
+                xaxis=dict(title='Seksi'),
+                legend=dict(title='Kategori Risiko', orientation='h', y=-0.3),
+                height=380,font=dict(family='Segoe UI')
             )
             st.plotly_chart(fig_risk, use_container_width=True, config={'displayModeBar':False})
+
         with c2:
-            st.markdown("**⚖️ MAE per Seksi**")
+            st.markdown("**⚖️ Nilai MAE per Seksi**")
+            st.caption("Grafik batang horizontal menunjukkan nilai MAE tiap seksi. Warna batang sesuai kategori risiko: hijau = rendah, kuning = sedang, merah = tinggi.")
             fig_mae = go.Figure(go.Bar(
                 orientation='h',
                 x=mae_vals,
@@ -897,11 +980,20 @@ elif halaman == "📈 Analisis & Proyeksi":
                 margin=dict(t=20,b=40,l=200,r=60),
                 paper_bgcolor='rgba(0,0,0,0)',plot_bgcolor='#fafafa',
                 xaxis=dict(title='MAE (%)',gridcolor='#f0f0f0'),
-                height=360,font=dict(family='Segoe UI')
+                height=380,font=dict(family='Segoe UI')
             )
             st.plotly_chart(fig_mae, use_container_width=True, config={'displayModeBar':False})
 
         st.markdown("**📏 Tabel Toleransi Deviasi ±5% — Proyeksi 2026**")
+        st.markdown("""
+        <div class='info-box-yellow'>
+        📌 <b>Apa itu toleransi deviasi?</b> Toleransi deviasi ±5% adalah batas wajar selisih
+        antara realisasi aktual dengan proyeksi. Jika realisasi berada di luar batas ini,
+        perlu dilakukan evaluasi dan tindak lanjut.<br>
+        Contoh: proyeksi Februari S1 = 7.87% → masih aman jika realisasi berada di 2.87% – 12.87%.
+        Jika di bawah 2.87%, penyerapan tertinggal dari rencana.
+        </div>
+        """, unsafe_allow_html=True)
         rows = []
         for s in SEKSI_LIST:
             for j, b in enumerate(BULAN[:6]):
@@ -912,11 +1004,23 @@ elif halaman == "📈 Analisis & Proyeksi":
                     'Proyeksi (%)': proj,
                     'Batas Bawah (-5%)': round(proj-5,2),
                     'Batas Atas (+5%)': round(proj+5,2),
-                    'Keterangan': f"Jika < {round(proj-5,2)}% → perlu tindak lanjut"
+                    'Keterangan': f"Jika realisasi < {round(proj-5,2)}% → perlu tindak lanjut"
                 })
         st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
 
-        st.markdown("**📐 Ringkasan Hasil Regresi per Seksi (dari laporan SPSS)**")
+        st.markdown("**📐 Ringkasan Hasil Regresi per Seksi**")
+        st.markdown("""
+        <div class='info-box'>
+        📌 <b>Penjelasan kolom:</b><br>
+        <b>a (Intersep)</b> = titik awal persamaan saat X=0 (nilai dasar proyeksi) &nbsp;|&nbsp;
+        <b>b (Koefisien)</b> = kemiringan garis, menunjukkan arah perubahan per bulan
+        (negatif = realisasi cenderung menurun dari awal ke akhir tahun) &nbsp;|&nbsp;
+        <b>Persamaan</b> = rumus untuk menghitung proyeksi: masukkan X (nomor bulan 1–11) untuk
+        mendapatkan estimasi % realisasi bulan tersebut &nbsp;|&nbsp;
+        <b>MAE</b> = rata-rata selisih antara proyeksi dan aktual &nbsp;|&nbsp;
+        <b>Risiko</b> = kategori berdasarkan MAE
+        </div>
+        """, unsafe_allow_html=True)
         rows_reg = []
         for s in SEKSI_LIST:
             r = REGRESI[s]
@@ -925,19 +1029,22 @@ elif halaman == "📈 Analisis & Proyeksi":
                 'a (Intersep)': r['a'], 'b (Koefisien)': r['b'],
                 'Persamaan': f"Ŷ = {r['a']} + ({r['b']})·X",
                 'MAE (%)': r['mae'],
-                'Risiko (CV)': r['risiko']
+                'Risiko': r['risiko']
             })
         st.dataframe(pd.DataFrame(rows_reg), use_container_width=True, hide_index=True)
 
         st.markdown("""
-        <div style='background:#f8f9fa;border-radius:10px;padding:16px 20px;margin-top:8px'>
-        <b>Keterangan:</b><br>
-        X = indeks bulan (1=Feb, 2=Mar, …, 11=Des) &nbsp;|&nbsp;
-        Y = % realisasi non-kumulatif per bulan<br>
-        Klasifikasi risiko berdasarkan <b>Koefisien Variasi (CV)</b> sesuai laporan SPSS:<br>
-        <span style='color:#d63031'>🔴 S3 & S4 = Tinggi</span> &nbsp;|&nbsp;
-        <span style='color:#fdcb6e'>🟡 S1 & S5 = Sedang</span> &nbsp;|&nbsp;
-        <span style='color:#00b894'>🟢 S2 & S6 = Rendah</span>
+        <div class='keterangan-box'>
+        <b>📊 Ringkasan Klasifikasi Risiko Berdasarkan MAE:</b><br>
+        <span style='color:#d63031'>🔴 <b>S3 — Penataan & Pemberdayaan</b> → Risiko Tinggi (MAE = 4.99%)</span><br>
+        &nbsp;&nbsp;&nbsp; Pola realisasi tidak konsisten antar tahun, proyeksi memiliki ketidakpastian lebih besar.<br>
+        <span style='color:#fdcb6e'>🟡 <b>S1 — Survei & Pemetaan</b> → Risiko Sedang (MAE = 2.53%)</span><br>
+        &nbsp;&nbsp;&nbsp; Pola cukup stabil, proyeksi memadai dengan deviasi dalam batas moderat.<br>
+        <span style='color:#00b894'>🟢 <b>S2, S4, S5, S6</b> → Risiko Rendah (MAE ≤ 1%)</span><br>
+        &nbsp;&nbsp;&nbsp; Pola realisasi sangat konsisten, proyeksi sangat akurat.<br><br>
+        <b>Catatan:</b> X = indeks bulan (1=Feb, 2=Mar, …, 11=Des) &nbsp;|&nbsp;
+        Y = % realisasi non-kumulatif per bulan &nbsp;|&nbsp;
+        Data gabungan 2018–2025 = 88 observasi per seksi
         </div>
         """, unsafe_allow_html=True)
 
@@ -947,23 +1054,48 @@ elif halaman == "📈 Analisis & Proyeksi":
 elif halaman == "📐 Regresi Linear":
     st.markdown("<h4 style='color:#1a3a6b;font-weight:800;margin-bottom:4px'>📐 Analisis Regresi Linear</h4>", unsafe_allow_html=True)
 
-    with st.expander("📖 Tentang Metode Regresi Linear", expanded=False):
+    with st.expander("📖 Penjelasan Lengkap Metode Regresi Linear (klik untuk buka)", expanded=False):
         st.markdown("""
         <div style='background:#f0f4f8;border-radius:12px;padding:20px 24px;line-height:1.8'>
         <h5 style='color:#1a3a6b;margin-bottom:12px'>Apa itu Regresi Linear Sederhana?</h5>
-        <p>Regresi linear sederhana memodelkan hubungan antara variabel bebas (<b>X</b>) dan variabel terikat (<b>Y</b>).</p>
+        <p>Regresi linear sederhana adalah metode statistik untuk memperkirakan nilai suatu
+        variabel berdasarkan variabel lain yang memiliki hubungan linear (garis lurus).
+        Dalam konteks ini, metode ini digunakan untuk memperkirakan berapa persen anggaran
+        yang akan terserap di bulan tertentu.</p>
+
         <div style='background:white;border-radius:8px;padding:14px 18px;margin:12px 0;border-left:4px solid #1a3a6b'>
-        <b>Persamaan:</b> <span style='font-size:16px;font-family:monospace'><b>Ŷ = a + b·X</b></span><br><br>
-        <b>Dalam konteks laporan ini:</b><br>
-        • <b>X</b> = indeks bulan (1=Feb, 2=Mar, …, 11=Des)<br>
-        • <b>Y</b> = % realisasi anggaran non-kumulatif per bulan<br>
-        • Data digabung dari 2018–2025 → <b>88 observasi per seksi</b><br>
-        • Setiap seksi menghasilkan <b>1 persamaan</b> (bukan per bulan)
+        <b>Persamaan dasar:</b> <span style='font-size:16px;font-family:monospace'><b>Ŷ = a + b·X</b></span><br><br>
+        <b>Penjelasan simbol:</b><br>
+        • <b>Ŷ</b> (Y topi) = nilai yang diprediksi (% realisasi per bulan)<br>
+        • <b>a</b> (intersep) = nilai awal saat X = 0; titik potong garis dengan sumbu Y<br>
+        • <b>b</b> (koefisien/kemiringan) = perubahan Y setiap X bertambah 1;
+          nilai negatif berarti realisasi cenderung turun dari awal ke akhir tahun<br>
+        • <b>X</b> = indeks bulan: 1=Februari, 2=Maret, …, 11=Desember
         </div>
+
         <div style='background:white;border-radius:8px;padding:14px 18px;margin:12px 0;border-left:4px solid #00b894'>
+        <b>Contoh penggunaan:</b><br>
+        S1 memiliki persamaan Ŷ = 10.201 + (−0.331)·X<br>
+        Untuk bulan Maret (X=2): Ŷ = 10.201 − 0.331×2 = 10.201 − 0.662 = <b>9.539%</b><br>
+        Artinya: diperkirakan 9.539% dari total pagu S1 terserap di bulan Maret 2026.
+        </div>
+
+        <div style='background:white;border-radius:8px;padding:14px 18px;margin:12px 0;border-left:4px solid #c8a84b'>
         <b>Alur Proyeksi Dua Tahap:</b><br>
-        <b>Tahap 1:</b> Data 2018–2025 digabung → fit (dari laporan SPSS) → substitusi X=1..11 → <b>Proyeksi 2026</b><br>
-        <b>Tahap 2:</b> Data 2018–2025 + Proyeksi 2026 digabung → fit ulang → substitusi X=1..11 → <b>Proyeksi 2027</b>
+        <b>Tahap 1 →</b> Gunakan koefisien dari hasil SPSS (data 2018–2025) →
+        substitusi X=1 s/d 11 → hasil = <b>Proyeksi 2026</b><br>
+        <b>Tahap 2 →</b> Gabungkan data 2018–2025 dengan Proyeksi 2026 →
+        hitung persamaan baru → substitusi X=1 s/d 11 → hasil = <b>Proyeksi 2027</b><br><br>
+        <b>Mengapa dua tahap?</b> Agar proyeksi 2027 mempertimbangkan perkiraan kondisi 2026,
+        sehingga lebih adaptif terhadap tren terkini.
+        </div>
+
+        <div style='background:white;border-radius:8px;padding:14px 18px;margin:12px 0;border-left:4px solid #e17055'>
+        <b>Ukuran akurasi:</b><br>
+        • <b>R² (R-kuadrat)</b> = seberapa besar variasi data yang bisa dijelaskan oleh persamaan.
+          Nilai 0–1; semakin mendekati 1 semakin baik (R²=0.8 artinya 80% pola data terwakili).<br>
+        • <b>MAE (Mean Absolute Error)</b> = rata-rata selisih absolut antara nilai proyeksi dan aktual.
+          Satuan sama dengan Y (%). MAE=2% artinya rata-rata proyeksi meleset ±2% dari aktual.
         </div>
         </div>
         """, unsafe_allow_html=True)
@@ -978,9 +1110,11 @@ elif halaman == "📐 Regresi Linear":
     # ── TAB 1 ──
     with tab_r1:
         st.markdown("""
-        <div style='background:#e8f4fd;border-radius:10px;padding:14px 18px;margin-bottom:16px;border-left:4px solid #1a3a6b'>
-        <b>📌 Regresi Tahap 1</b> — Data aktual 2018–2025 digabung. <b>X = indeks bulan</b> (1=Feb…11=Des),
-        <b>Y = % realisasi non-kumulatif</b>. 1 persamaan per seksi (dari laporan SPSS). Proyeksi 2026 = substitusi X=1..11.
+        <div class='info-box'>
+        <b>📌 Regresi Tahap 1</b> — Data aktual realisasi 2018–2025 digabung menjadi satu dataset.
+        Setiap tahun menghasilkan 11 pasang data (X = bulan, Y = % realisasi), sehingga
+        total 88 observasi per seksi. Persamaan regresi dihitung menggunakan SPSS dan
+        digunakan untuk memproyeksikan realisasi tiap bulan di tahun <b>2026</b>.
         </div>
         """, unsafe_allow_html=True)
 
@@ -994,17 +1128,19 @@ elif halaman == "📐 Regresi Linear":
         proj26 = rd1['proj2026']
 
         col_eq1,col_eq2,col_eq3,col_eq4 = st.columns(4)
-        for col, label, val, color in [
-            (col_eq1,"Konstanta (a)",f"{a1v}","#1a3a6b"),
-            (col_eq2,"Koefisien (b)",f"{b1v}","#e17055"),
-            (col_eq3,"R²",f"{r2_1v}","#00b894"),
-            (col_eq4,"MAE (%)",f"{mae1v:.4f}","#c8a84b"),
-        ]:
+        metric_info = [
+            (col_eq1,"Konstanta (a)","Nilai awal / intersep persamaan",f"{a1v}","#1a3a6b"),
+            (col_eq2,"Koefisien (b)","Kemiringan garis; negatif = tren menurun",f"{b1v}","#e17055"),
+            (col_eq3,"R² (R-Kuadrat)","Seberapa baik persamaan menjelaskan data (0–1)",f"{r2_1v}","#00b894"),
+            (col_eq4,"MAE (%)","Rata-rata kesalahan proyeksi terhadap aktual",f"{mae1v:.4f}","#c8a84b"),
+        ]
+        for col, label, keterangan, val, color in metric_info:
             col.markdown(f"""
             <div style='background:white;border-radius:12px;padding:16px 18px;
                         box-shadow:0 2px 12px rgba(0,0,0,0.07);border-top:3px solid {color};text-align:center'>
-              <div style='font-size:11px;color:#636e72;margin-bottom:4px'>{label}</div>
+              <div style='font-size:11px;color:#636e72;margin-bottom:2px'>{label}</div>
               <div style='font-size:20px;font-weight:800;color:{color}'>{val}</div>
+              <div style='font-size:10px;color:#b2bec3;margin-top:4px'>{keterangan}</div>
             </div>
             """, unsafe_allow_html=True)
 
@@ -1014,6 +1150,8 @@ elif halaman == "📐 Regresi Linear":
         X = 1 (Feb) … 11 (Des) &nbsp;|&nbsp; n = {len(rd1['x_gabung'])} observasi
         </div>
         """, unsafe_allow_html=True)
+
+        st.caption("Masukkan X (nomor bulan: 1=Feb s/d 11=Des) ke persamaan di atas untuk mendapatkan proyeksi % realisasi bulan tersebut.")
 
         fig_r1 = go.Figure()
         fig_r1.add_trace(go.Scatter(
@@ -1035,29 +1173,33 @@ elif halaman == "📐 Regresi Linear":
             line=dict(color='#c8a84b',dash='dot')
         ))
         fig_r1.update_layout(
-            title=f"Sebaran Data & Regresi Tahap 1 — {sel_s1} ({SEKSI_NAMA[sel_s1]})",
-            xaxis=dict(title='Indeks Bulan (1=Feb … 11=Des)',gridcolor='#f0f0f0',
+            title=f"Sebaran Data & Garis Regresi Tahap 1 — {sel_s1} ({SEKSI_NAMA[sel_s1]})",
+            xaxis=dict(title='Indeks Bulan (X): 1=Feb … 11=Des',gridcolor='#f0f0f0',
                        tickvals=list(range(1,12)),ticktext=BULAN),
-            yaxis=dict(title='% Realisasi Non-Kumulatif',gridcolor='#f0f0f0'),
+            yaxis=dict(title='% Realisasi Non-Kumulatif (Y)',gridcolor='#f0f0f0'),
             legend=dict(orientation='h',y=-0.3),
             margin=dict(t=50,b=100,l=50,r=20),
             paper_bgcolor='rgba(0,0,0,0)',plot_bgcolor='#fafafa',
             height=420,font=dict(family='Segoe UI')
         )
         st.plotly_chart(fig_r1, use_container_width=True, config={'displayModeBar':False})
+        st.caption("Titik biru = data aktual historis (2018–2025). Garis merah = garis regresi yang merepresentasikan tren rata-rata. Bintang kuning = proyeksi 2026 hasil substitusi persamaan.")
 
-        st.markdown(f"**📋 Proyeksi 2026 per Bulan — {sel_s1}**")
-        tbl_proj26 = [{'Bulan': BULAN[i], 'X': i+1,
-                       'Substitusi': f"Ŷ = {a1v} + ({b1v})×{i+1}",
+        st.markdown(f"**📋 Tabel Proyeksi 2026 per Bulan — {sel_s1}**")
+        st.caption("Kolom 'Substitusi' menunjukkan cara persamaan digunakan untuk menghitung proyeksi tiap bulan.")
+        tbl_proj26 = [{'Bulan': BULAN[i], 'X (Indeks Bulan)': i+1,
+                       'Substitusi ke Persamaan': f"Ŷ = {a1v} + ({b1v})×{i+1}",
                        'Proyeksi 2026 (%)': proj26[i]} for i in range(11)]
         st.dataframe(pd.DataFrame(tbl_proj26), use_container_width=True, hide_index=True)
 
     # ── TAB 2 ──
     with tab_r2:
         st.markdown("""
-        <div style='background:#e8f4fd;border-radius:10px;padding:14px 18px;margin-bottom:16px;border-left:4px solid #00b894'>
-        <b>📌 Regresi Tahap 2</b> — Data 2018–2025 (aktual) + 2026 (proyeksi) digabung.
-        Fit ulang otomatis → persamaan baru → substitusi X=1..11 → <b>Proyeksi 2027</b>.
+        <div class='info-box-green'>
+        <b>📌 Regresi Tahap 2</b> — Data aktual 2018–2025 (88 observasi per seksi)
+        <b>digabungkan dengan Proyeksi 2026</b> (11 observasi) sehingga total menjadi 99 observasi.
+        Dari gabungan ini dihitung persamaan regresi baru secara otomatis (OLS/Kuadrat Terkecil),
+        yang kemudian digunakan untuk memproyeksikan realisasi tiap bulan di tahun <b>2027</b>.
         </div>
         """, unsafe_allow_html=True)
 
@@ -1071,24 +1213,26 @@ elif halaman == "📐 Regresi Linear":
         proj27 = rd2['proj2027']
 
         col_eq1,col_eq2,col_eq3,col_eq4 = st.columns(4)
-        for col, label, val, color in [
-            (col_eq1,"Konstanta (a)",f"{a2v}","#1a3a6b"),
-            (col_eq2,"Koefisien (b)",f"{b2v}","#e17055"),
-            (col_eq3,"R²",f"{r2_2v}","#00b894"),
-            (col_eq4,"MAE (%)",f"{mae2v:.4f}","#9b59b6"),
-        ]:
+        metric_info2 = [
+            (col_eq1,"Konstanta (a)","Nilai awal / intersep persamaan Tahap 2",f"{a2v}","#1a3a6b"),
+            (col_eq2,"Koefisien (b)","Kemiringan garis; negatif = tren menurun",f"{b2v}","#e17055"),
+            (col_eq3,"R² (R-Kuadrat)","Seberapa baik persamaan menjelaskan data (0–1)",f"{r2_2v}","#00b894"),
+            (col_eq4,"MAE (%)","Rata-rata kesalahan proyeksi terhadap aktual",f"{mae2v:.4f}","#9b59b6"),
+        ]
+        for col, label, keterangan, val, color in metric_info2:
             col.markdown(f"""
             <div style='background:white;border-radius:12px;padding:16px 18px;
                         box-shadow:0 2px 12px rgba(0,0,0,0.07);border-top:3px solid {color};text-align:center'>
-              <div style='font-size:11px;color:#636e72;margin-bottom:4px'>{label}</div>
+              <div style='font-size:11px;color:#636e72;margin-bottom:2px'>{label}</div>
               <div style='font-size:20px;font-weight:800;color:{color}'>{val}</div>
+              <div style='font-size:10px;color:#b2bec3;margin-top:4px'>{keterangan}</div>
             </div>
             """, unsafe_allow_html=True)
 
         st.markdown(f"""
         <div style='background:#1a3a6b;color:white;border-radius:10px;padding:12px 20px;margin:16px 0;text-align:center;font-size:15px'>
         <b>Persamaan Tahap 2:</b> &nbsp; Ŷ = {a2v} + ({b2v}) · X &nbsp;|&nbsp;
-        n = {len(rd2['x_gabung2'])} observasi (2018–2026)
+        n = {len(rd2['x_gabung2'])} observasi (data 2018–2025 + proyeksi 2026)
         </div>
         """, unsafe_allow_html=True)
 
@@ -1101,14 +1245,14 @@ elif halaman == "📐 Regresi Linear":
         ))
         fig_r2.add_trace(go.Scatter(
             x=rd2['x_gabung2'][n_aktual:], y=rd2['y_gabung2'][n_aktual:], mode='markers',
-            name='Proyeksi 2026 (input)',
+            name='Proyeksi 2026 (dimasukkan sebagai input)',
             marker=dict(size=9,color='#e17055',symbol='diamond')
         ))
         x_line2 = list(range(1,12))
         y_line2 = [round(a2v + b2v*x,4) for x in x_line2]
         fig_r2.add_trace(go.Scatter(
             x=x_line2, y=y_line2, mode='lines',
-            name='Garis Regresi Tahap 2',
+            name='Garis Regresi Tahap 2 (baru)',
             line=dict(color='#9b59b6',width=2.5)
         ))
         fig_r2.add_trace(go.Scatter(
@@ -1118,26 +1262,36 @@ elif halaman == "📐 Regresi Linear":
             line=dict(color='#c8a84b',dash='dot')
         ))
         fig_r2.update_layout(
-            title=f"Sebaran Data & Regresi Tahap 2 — {sel_s2} ({SEKSI_NAMA[sel_s2]})",
-            xaxis=dict(title='Indeks Bulan (1=Feb … 11=Des)',gridcolor='#f0f0f0',
+            title=f"Sebaran Data & Garis Regresi Tahap 2 — {sel_s2} ({SEKSI_NAMA[sel_s2]})",
+            xaxis=dict(title='Indeks Bulan (X): 1=Feb … 11=Des',gridcolor='#f0f0f0',
                        tickvals=list(range(1,12)),ticktext=BULAN),
-            yaxis=dict(title='% Realisasi Non-Kumulatif',gridcolor='#f0f0f0'),
+            yaxis=dict(title='% Realisasi Non-Kumulatif (Y)',gridcolor='#f0f0f0'),
             legend=dict(orientation='h',y=-0.3),
             margin=dict(t=50,b=100,l=50,r=20),
             paper_bgcolor='rgba(0,0,0,0)',plot_bgcolor='#fafafa',
             height=420,font=dict(family='Segoe UI')
         )
         st.plotly_chart(fig_r2, use_container_width=True, config={'displayModeBar':False})
+        st.caption("Titik biru = data aktual 2018–2025. Berlian merah = proyeksi 2026 yang ikut dimasukkan ke dataset. Garis ungu = garis regresi Tahap 2 yang baru. Bintang kuning = proyeksi 2027.")
 
-        st.markdown(f"**📋 Proyeksi 2027 per Bulan — {sel_s2}**")
-        tbl_proj27 = [{'Bulan': BULAN[i], 'X': i+1,
-                       'Substitusi': f"Ŷ = {a2v} + ({b2v})×{i+1}",
+        st.markdown(f"**📋 Tabel Proyeksi 2027 per Bulan — {sel_s2}**")
+        tbl_proj27 = [{'Bulan': BULAN[i], 'X (Indeks Bulan)': i+1,
+                       'Substitusi ke Persamaan': f"Ŷ = {a2v} + ({b2v})×{i+1}",
                        'Proyeksi 2027 (%)': proj27[i]} for i in range(11)]
         st.dataframe(pd.DataFrame(tbl_proj27), use_container_width=True, hide_index=True)
 
     # ── TAB 3 ──
     with tab_r3:
-        st.markdown("### 📋 Ringkasan Semua Seksi — 1 Persamaan per Seksi")
+        st.markdown("### 📋 Ringkasan Semua Seksi — Perbandingan Tahap 1 & Tahap 2")
+        st.markdown("""
+        <div class='info-box'>
+        📌 <b>Tabel ini membandingkan</b> persamaan regresi, nilai akurasi (R² dan MAE),
+        serta total proyeksi antara Tahap 1 (untuk 2026) dan Tahap 2 (untuk 2027) untuk
+        semua seksi sekaligus. Kolom 'Selisih' menunjukkan apakah proyeksi 2027 lebih tinggi
+        atau lebih rendah dari 2026.
+        </div>
+        """, unsafe_allow_html=True)
+
         tbl_all = []
         for s in SEKSI_LIST:
             rd = regresi_data[s]
@@ -1152,14 +1306,18 @@ elif halaman == "📐 Regresi Linear":
                 'Total Proj 2026 (%)': round(sum(rd['proj2026']),2),
                 'Total Proj 2027 (%)': round(sum(rd['proj2027']),2),
                 'Selisih 2027-2026 (%)': round(sum(rd['proj2027'])-sum(rd['proj2026']),2),
-                'Risiko (CV)': REGRESI[s]['risiko'],
+                'Risiko (MAE)': REGRESI[s]['risiko'],
             })
         st.dataframe(pd.DataFrame(tbl_all), use_container_width=True, hide_index=True)
 
         risiko_clr = {'Rendah':'#00b894','Sedang':'#fdcb6e','Tinggi':'#d63031'}
         col_mae1, col_mae2 = st.columns(2)
-        for col, tahap, key_mae in [(col_mae1,"Tahap 1",'mae1'),(col_mae2,"Tahap 2",'mae2')]:
+        for col, tahap, key_mae, warna_judul in [
+            (col_mae1,"Tahap 1 (data 2018–2025)",'mae1','#1a3a6b'),
+            (col_mae2,"Tahap 2 (data 2018–2026)",'mae2','#9b59b6')
+        ]:
             with col:
+                st.markdown(f"**MAE per Seksi — {tahap}**")
                 mae_vals = [regresi_data[s][key_mae] for s in SEKSI_LIST]
                 clrs = [risiko_clr[REGRESI[s]['risiko']] for s in SEKSI_LIST]
                 fig_m = go.Figure(go.Bar(
@@ -1168,7 +1326,6 @@ elif halaman == "📐 Regresi Linear":
                     text=[f"{v:.4f}%" for v in mae_vals],textposition='outside'
                 ))
                 fig_m.update_layout(
-                    title=f"MAE {tahap} per Seksi",
                     margin=dict(t=40,b=40,l=40,r=20),
                     paper_bgcolor='rgba(0,0,0,0)',plot_bgcolor='#fafafa',
                     yaxis=dict(title='MAE (%)',gridcolor='#f0f0f0'),
@@ -1177,21 +1334,27 @@ elif halaman == "📐 Regresi Linear":
                 st.plotly_chart(fig_m, use_container_width=True, config={'displayModeBar':False})
 
         st.markdown("""
-        <div style='background:#f8f9fa;border-radius:10px;padding:16px 20px;margin-top:8px'>
-        <b>📏 Interpretasi MAE:</b><br>
-        <span style='color:#00b894'>🟢 MAE ≤ 1% → Akurasi Tinggi</span> &nbsp;|&nbsp;
-        <span style='color:#fdcb6e'>🟡 MAE 1–3% → Akurasi Sedang</span> &nbsp;|&nbsp;
-        <span style='color:#d63031'>🔴 MAE > 3% → Akurasi Rendah</span><br>
-        Klasifikasi risiko: S3 & S4 = Tinggi | S1 & S5 = Sedang | S2 & S6 = Rendah
+        <div class='keterangan-box'>
+        <b>📏 Interpretasi MAE & Klasifikasi Risiko:</b><br>
+        <span style='color:#00b894'>🟢 <b>Rendah</b> → MAE ≤ 1% — akurasi tinggi, proyeksi sangat mendekati aktual</span>
+        &nbsp; (S2, S4, S5, S6)<br>
+        <span style='color:#fdcb6e'>🟡 <b>Sedang</b> → 1% &lt; MAE ≤ 3% — akurasi cukup, deviasi dalam batas wajar</span>
+        &nbsp; (S1)<br>
+        <span style='color:#d63031'>🔴 <b>Tinggi</b> → MAE &gt; 3% — akurasi rendah, pola realisasi tidak konsisten antar tahun</span>
+        &nbsp; (S3)<br><br>
+        <b>R² (R-Kuadrat)</b>: mendekati 1 = persamaan sangat baik menggambarkan pola data;
+        mendekati 0 = data menyebar jauh dari garis regresi.
         </div>
         """, unsafe_allow_html=True)
 
     # ── TAB 4 ──
     with tab_r4:
         st.markdown("""
-        <div style='background:#e8f4fd;border-radius:10px;padding:14px 18px;margin-bottom:16px;border-left:4px solid #c8a84b'>
-        <b>🧮 Kalkulator Data Baru</b> — Tambahkan data realisasi tahun baru,
-        sistem akan menghitung ulang persamaan regresi dan proyeksi tahun berikutnya.
+        <div class='info-box-yellow'>
+        <b>🧮 Kalkulator Data Baru</b> — Masukkan data realisasi aktual tahun baru
+        (misalnya setelah data 2026 tersedia), dan sistem akan menghitung ulang persamaan
+        regresi secara otomatis serta menghasilkan proyeksi untuk tahun berikutnya.
+        Ini berguna untuk memperbarui proyeksi secara berkala seiring data aktual masuk.
         </div>
         """, unsafe_allow_html=True)
 
@@ -1202,6 +1365,7 @@ elif halaman == "📐 Regresi Linear":
                                        format_func=lambda x: f"{x} — {SEKSI_NAMA[x]}", key='kalk_seksi')
 
         st.markdown(f"**Masukkan % Realisasi Bulanan {seksi_kalk} Tahun {tahun_baru}** (non-kumulatif per bulan)")
+        st.caption("Isikan persentase realisasi yang terjadi di setiap bulan secara terpisah (bukan kumulatif). Contoh: Februari = 8.5% berarti 8.5% dari pagu terserap di bulan Februari saja.")
         cols_inp = st.columns(6)
         input_vals = []
         for i, bln in enumerate(BULAN):
@@ -1239,11 +1403,28 @@ elif halaman == "📐 Regresi Linear":
             a_k, b_k, r2_k, mae_k = regresi_manual_kalk(x_pool_k, y_pool_k)
             proj_next = [max(0.0, round(a_k + b_k*x, 4)) for x in range(1,12)]
 
+            # Klasifikasi risiko berdasarkan MAE baru
+            if mae_k <= 1:
+                risiko_baru = "🟢 Rendah"
+                risiko_clr_baru = "#00b894"
+            elif mae_k <= 3:
+                risiko_baru = "🟡 Sedang"
+                risiko_clr_baru = "#c8a84b"
+            else:
+                risiko_baru = "🔴 Tinggi"
+                risiko_clr_baru = "#d63031"
+
             st.markdown(f"""
-            <div style='background:#1a3a6b;color:white;border-radius:10px;padding:14px 20px;margin:12px 0;text-align:center'>
-            Persamaan Baru: <b>Ŷ = {a_k} + ({b_k})·X</b> &nbsp;|&nbsp; R²={r2_k} &nbsp;|&nbsp; MAE={mae_k:.4f}%<br>
+            <div style='background:#1a3a6b;color:white;border-radius:10px;padding:14px 20px;margin:12px 0'>
+            <div style='text-align:center'>
+            Persamaan Baru: <b>Ŷ = {a_k} + ({b_k})·X</b> &nbsp;|&nbsp;
+            R² = {r2_k} &nbsp;|&nbsp; MAE = {mae_k:.4f}% &nbsp;|&nbsp;
+            Risiko: <span style='color:{risiko_clr_baru};font-weight:800'>{risiko_baru}</span>
+            </div>
+            <div style='text-align:center;margin-top:8px'>
             Total Proyeksi <b>{tahun_baru+1}</b> untuk <b>{seksi_kalk}</b>:
-            <span style='color:#c8a84b;font-size:22px;font-weight:800'>{round(sum(proj_next),2)}%</span>
+            <span style='color:#c8a84b;font-size:22px;font-weight:800'> {round(sum(proj_next),2)}%</span>
+            </div>
             </div>
             """, unsafe_allow_html=True)
 
@@ -1253,34 +1434,34 @@ elif halaman == "📐 Regresi Linear":
                 text=[f"{v:.2f}%" for v in proj_next],textposition='outside',
             ))
             fig_kalk.update_layout(
-                title=f"Proyeksi {tahun_baru+1} per Bulan — {seksi_kalk}",
+                title=f"Proyeksi {tahun_baru+1} per Bulan — {seksi_kalk} ({SEKSI_NAMA[seksi_kalk]})",
                 margin=dict(t=50,b=60,l=50,r=20),
                 paper_bgcolor='rgba(0,0,0,0)',plot_bgcolor='#fafafa',
-                xaxis=dict(tickangle=-20,gridcolor='#f0f0f0'),
-                yaxis=dict(title='% Realisasi',gridcolor='#f0f0f0'),
+                xaxis=dict(tickangle=-20,gridcolor='#f0f0f0',title='Bulan'),
+                yaxis=dict(title='% Realisasi yang Diproyeksikan',gridcolor='#f0f0f0'),
                 height=320,font=dict(family='Segoe UI')
             )
             st.plotly_chart(fig_kalk, use_container_width=True, config={'displayModeBar':False})
+            st.caption(f"Grafik di atas menunjukkan perkiraan realisasi per bulan untuk tahun {tahun_baru+1} berdasarkan data yang baru dimasukkan.")
 
-            tbl_kalk = [{'Bulan': BULAN[i], 'X': i+1,
-                         'Substitusi': f"Ŷ = {a_k} + ({b_k})×{i+1}",
+            tbl_kalk = [{'Bulan': BULAN[i], 'X (Indeks Bulan)': i+1,
+                         'Substitusi ke Persamaan': f"Ŷ = {a_k} + ({b_k})×{i+1}",
                          f'Proyeksi {tahun_baru+1} (%)': proj_next[i]} for i in range(11)]
             st.dataframe(pd.DataFrame(tbl_kalk), use_container_width=True, hide_index=True)
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# HALAMAN 5 — MANAJEMEN USER (khusus Admin Keuangan, Kepala Kantor, Kasubbag TU)
+# HALAMAN 5 — MANAJEMEN USER
 # ═══════════════════════════════════════════════════════════════════════════════
 elif halaman == "👥 Manajemen User":
     st.markdown("<h4 style='color:#1a3a6b;font-weight:800;margin-bottom:4px'>👥 Manajemen User</h4>", unsafe_allow_html=True)
 
     st.markdown("""
-    <div style='background:#fff3cd;border-radius:10px;padding:12px 18px;margin-bottom:20px;
-                border-left:4px solid #c8a84b;font-size:12.5px;line-height:1.7'>
+    <div class='info-box-yellow'>
     ⚠️ <b>Catatan penting:</b> Perubahan (tambah/hapus user) disimpan di file <code>users_data.json</code>
     di server. Karena <b>Streamlit Community Cloud</b> bisa mereset filesystem-nya saat app di-reboot
-    atau kode di-push ulang, daftar user yang baru diubah lewat menu ini <b>bisa balik ke versi lama</b>
-    setelah reboot. Supaya perubahan permanen, klik tombol <b>"⬇️ Download backup"</b> di tab "Daftar User"
-    lalu replace/commit file <code>users_data.json</code> itu di repo GitHub.
+    atau kode di-push ulang, daftar user yang baru diubah lewat menu ini <b>bisa kembali ke versi lama</b>
+    setelah reboot. Supaya perubahan permanen, klik tombol <b>"⬇️ Download backup"</b> di tab
+    "Daftar User", lalu replace/commit file <code>users_data.json</code> itu di repo GitHub.
     </div>
     """, unsafe_allow_html=True)
 
@@ -1288,6 +1469,16 @@ elif halaman == "👥 Manajemen User":
 
     # ── TAB: DAFTAR USER ─────────────────────────────────────────────────────
     with tab_list:
+        st.markdown("""
+        <div class='info-box'>
+        📌 Tabel ini menampilkan semua akun yang terdaftar di sistem beserta peran
+        (<i>role</i>) dan hak aksesnya. <b>Role</b> menentukan menu apa saja yang bisa
+        diakses: Admin Keuangan / Kepala Kantor / Kasubbag TU bisa mengakses semua menu,
+        sedangkan Pegawai Seksi hanya bisa mengakses Dashboard dan Monitoring Bulanan
+        sesuai seksinya masing-masing.
+        </div>
+        """, unsafe_allow_html=True)
+
         rows_u = []
         for uname, info in USERS.items():
             role_disp = ROLE_LABEL.get(info.get('role',''), info.get('role',''))
@@ -1298,12 +1489,11 @@ elif halaman == "👥 Manajemen User":
             rows_u.append({
                 'Username': uname,
                 'Nama': info.get('nama', '—'),
-                'Role': role_disp,
-                'Akses': seksi_disp,
+                'Role / Jabatan': role_disp,
+                'Hak Akses': seksi_disp,
             })
         st.dataframe(pd.DataFrame(rows_u), use_container_width=True, hide_index=True)
-
-        st.markdown(f"<div style='font-size:12px;color:#636e72;margin-top:4px'>Total user terdaftar: <b>{len(USERS)}</b></div>", unsafe_allow_html=True)
+        st.caption(f"Total akun terdaftar: **{len(USERS)}**")
 
         users_json_str = json.dumps(USERS, indent=2, ensure_ascii=False)
         st.download_button(
@@ -1316,6 +1506,13 @@ elif halaman == "👥 Manajemen User":
 
     # ── TAB: TAMBAH PEGAWAI ──────────────────────────────────────────────────
     with tab_add:
+        st.markdown("""
+        <div class='info-box'>
+        📌 Gunakan form ini untuk mendaftarkan akun baru. Pilih <b>Role / Jabatan</b>
+        yang sesuai — Pegawai Seksi hanya bisa melihat data seksinya sendiri,
+        sedangkan role lain mendapat akses ke seluruh fitur sistem.
+        </div>
+        """, unsafe_allow_html=True)
         st.markdown("**Tambah Pegawai / Akun Baru**")
         with st.form("form_tambah_user", clear_on_submit=True):
             c1, c2 = st.columns(2)
@@ -1334,7 +1531,7 @@ elif halaman == "👥 Manajemen User":
                     "Seksi", SEKSI_LIST, format_func=lambda x: f"{x} — {SEKSI_NAMA[x]}"
                 )
             else:
-                st.caption("ℹ️ Role ini otomatis mendapat akses ke **seluruh seksi (S1–S6)**.")
+                st.caption("ℹ️ Role ini otomatis mendapat akses ke **seluruh seksi (S1–S6)** dan semua menu sistem.")
             submit_add = st.form_submit_button("➕ Tambahkan User", type="primary", use_container_width=True)
 
         if submit_add:
@@ -1366,29 +1563,37 @@ elif halaman == "👥 Manajemen User":
 
     # ── TAB: HAPUS PEGAWAI ───────────────────────────────────────────────────
     with tab_del:
+        st.markdown("""
+        <div class='info-box'>
+        📌 Pilih akun yang ingin dihapus dari sistem. Penghapusan bersifat permanen
+        (selama file <code>users_data.json</code> sudah di-backup ke GitHub).
+        Anda tidak bisa menghapus akun yang sedang Anda gunakan untuk login saat ini.
+        </div>
+        """, unsafe_allow_html=True)
         st.markdown("**Hapus Pegawai / Akun**")
         deletable_users = [u for u in USERS.keys() if u != st.session_state.get('username')]
 
         if not deletable_users:
-            st.info("Tidak ada user lain yang bisa dihapus.")
+            st.info("Tidak ada akun lain yang bisa dihapus saat ini.")
         else:
             target_user = st.selectbox(
-                "Pilih user yang akan dihapus",
+                "Pilih akun yang akan dihapus",
                 deletable_users,
                 format_func=lambda x: f"{x} — {USERS[x].get('nama','')} ({ROLE_LABEL.get(USERS[x].get('role',''), USERS[x].get('role',''))})"
             )
             info_del = USERS[target_user]
             st.markdown(f"""
             <div style='background:#f8d7da;border-radius:8px;padding:10px 16px;margin:10px 0;font-size:13px;color:#721c24'>
-            Akan menghapus: <b>{info_del.get('nama','—')}</b> (username: <code>{target_user}</code>,
-            role: {ROLE_LABEL.get(info_del.get('role',''), info_del.get('role',''))})
+            ⚠️ Akan menghapus: <b>{info_del.get('nama','—')}</b>
+            (username: <code>{target_user}</code>,
+            jabatan: {ROLE_LABEL.get(info_del.get('role',''), info_del.get('role',''))})
             </div>
             """, unsafe_allow_html=True)
             confirm_del = st.checkbox(f"Saya yakin ingin menghapus akun '{target_user}'")
             if st.button("🗑️ Hapus User", type="primary", disabled=not confirm_del):
                 del USERS[target_user]
                 save_users(USERS)
-                st.success(f"✅ User '{target_user}' berhasil dihapus.")
+                st.success(f"✅ Akun '{target_user}' berhasil dihapus.")
                 st.rerun()
 
-        st.caption("ℹ️ Anda tidak bisa menghapus akun yang sedang Anda gunakan untuk login (mencegah Anda terkunci dari sistem).")
+        st.caption("ℹ️ Anda tidak bisa menghapus akun yang sedang digunakan untuk login, untuk mencegah terkunci dari sistem.")
