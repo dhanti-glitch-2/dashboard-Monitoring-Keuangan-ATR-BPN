@@ -931,10 +931,10 @@ elif halaman == "📈 Analisis & Proyeksi":
             )
             st.plotly_chart(fig_mae, use_container_width=True, config={'displayModeBar':False})
 
-        st.markdown("**📏 Tabel Toleransi Deviasi ±5% — Proyeksi 2026**")
+        st.markdown("**📏 Tabel Toleransi Deviasi ±5% — Proyeksi 2026 (Februari–Desember)**")
         rows = []
         for s in SEKSI_LIST:
-            for j, b in enumerate(BULAN[:6]):
+            for j, b in enumerate(BULAN):
                 proj = PROYEKSI_2026[s][j]
                 rows.append({
                     'Seksi': f"{s} — {SEKSI_NAMA[s]}",
@@ -942,10 +942,11 @@ elif halaman == "📈 Analisis & Proyeksi":
                     'Proyeksi (%)': proj,
                     'Batas Bawah (-5%)': round(proj-5,2),
                     'Batas Atas (+5%)': round(proj+5,2),
-                    'Keterangan': f"Jika realisasi < {round(proj-5,2)}% → perlu tindak lanjut"
                 })
         st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
+        st.caption("Jika realisasi aktual jatuh di bawah 'Batas Bawah', seksi tersebut perlu tindak lanjut karena penyerapan lebih lambat dari proyeksi.")
 
+        st.markdown("**📐 Ringkasan Hasil Regresi per Seksi**")
         rows_reg = []
         for s in SEKSI_LIST:
             r = REGRESI[s]
@@ -953,15 +954,77 @@ elif halaman == "📈 Analisis & Proyeksi":
                 'Seksi': s, 'Nama': SEKSI_NAMA[s],
                 'a (Intersep)': r['a'], 'b (Koefisien)': r['b'],
                 'Persamaan': f"Ŷ = {r['a']} + ({r['b']})·X",
+                'R²': regresi_data[s]['r2_1'],
                 'MAE (%)': r['mae'], 'Risiko': r['risiko']
             })
         st.dataframe(pd.DataFrame(rows_reg), use_container_width=True, hide_index=True)
+        st.caption("R² (R-Kuadrat) menunjukkan seberapa baik persamaan regresi menjelaskan variasi data aktual — semakin mendekati 1, semakin baik.")
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # HALAMAN 4 — REGRESI LINEAR
 # ═══════════════════════════════════════════════════════════════════════════════
 elif halaman == "📐 Regresi Linear":
     st.markdown("<h4 style='color:#1a3a6b;font-weight:800;margin-bottom:4px'>📐 Analisis Regresi Linear</h4>", unsafe_allow_html=True)
+
+    st.markdown("""
+    <div style='background:white;border-radius:14px;padding:22px 24px;margin:14px 0 18px;
+                box-shadow:0 4px 20px rgba(0,0,0,0.06)'>
+      <div style='font-weight:700;color:#1a3a6b;font-size:14px;margin-bottom:16px'>
+      🔄 Alur Proyeksi Berjalan (Rolling Projection) — Studi Kasus 2026 → 2027
+      </div>
+
+      <div style='display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px'>
+        <div style='flex:1;min-width:130px;background:#f0f4f8;border-radius:10px;padding:14px 10px;text-align:center;border:1.5px solid #1a3a6b'>
+          <div style='font-size:10px;color:#636e72'>LANGKAH 1</div>
+          <div style='font-weight:700;font-size:12.5px;color:#1a3a6b;margin-top:3px'>Data Aktual<br>2018–2025</div>
+          <div style='font-size:10px;color:#636e72;margin-top:5px'>88 observasi / seksi</div>
+        </div>
+        <div style='font-size:20px;color:#c8a84b;padding:0 2px'>→</div>
+        <div style='flex:1;min-width:130px;background:#e8f4fd;border-radius:10px;padding:14px 10px;text-align:center;border:1.5px solid #2e86de'>
+          <div style='font-size:10px;color:#636e72'>LANGKAH 2</div>
+          <div style='font-weight:700;font-size:12.5px;color:#1a3a6b;margin-top:3px'>Fit Tahap 1<br>(Persamaan SPSS)</div>
+          <div style='font-size:10px;color:#636e72;margin-top:5px;font-family:monospace'>Ŷ = a₁ + b₁·X</div>
+        </div>
+        <div style='font-size:20px;color:#c8a84b;padding:0 2px'>→</div>
+        <div style='flex:1;min-width:130px;background:#fffbea;border-radius:10px;padding:14px 10px;text-align:center;border:1.5px solid #c8a84b'>
+          <div style='font-size:10px;color:#636e72'>HASIL</div>
+          <div style='font-weight:800;font-size:13px;color:#7a6000;margin-top:3px'>Proyeksi 2026</div>
+          <div style='font-size:10px;color:#636e72;margin-top:5px'>11 nilai (Feb–Des)</div>
+        </div>
+      </div>
+
+      <div style='text-align:center;margin:8px 0;color:#c8a84b;font-size:13px;font-weight:600'>
+      ↓&nbsp; digabung dengan data aktual 2018–2025 &nbsp;↓
+      </div>
+
+      <div style='display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px'>
+        <div style='flex:1;min-width:130px;background:#f0f4f8;border-radius:10px;padding:14px 10px;text-align:center;border:1.5px solid #1a3a6b'>
+          <div style='font-size:10px;color:#636e72'>LANGKAH 3</div>
+          <div style='font-weight:700;font-size:12.5px;color:#1a3a6b;margin-top:3px'>Data 2018–2025<br>+ Proyeksi 2026</div>
+          <div style='font-size:10px;color:#636e72;margin-top:5px'>99 observasi / seksi</div>
+        </div>
+        <div style='font-size:20px;color:#00b894;padding:0 2px'>→</div>
+        <div style='flex:1;min-width:130px;background:#e8fdf5;border-radius:10px;padding:14px 10px;text-align:center;border:1.5px solid #00b894'>
+          <div style='font-size:10px;color:#636e72'>LANGKAH 4</div>
+          <div style='font-weight:700;font-size:12.5px;color:#1a3a6b;margin-top:3px'>Fit Tahap 2<br>(Hitung Ulang OLS)</div>
+          <div style='font-size:10px;color:#636e72;margin-top:5px;font-family:monospace'>Ŷ = a₂ + b₂·X</div>
+        </div>
+        <div style='font-size:20px;color:#00b894;padding:0 2px'>→</div>
+        <div style='flex:1;min-width:130px;background:#fffbea;border-radius:10px;padding:14px 10px;text-align:center;border:1.5px solid #c8a84b'>
+          <div style='font-size:10px;color:#636e72'>HASIL</div>
+          <div style='font-weight:800;font-size:13px;color:#7a6000;margin-top:3px'>Proyeksi 2027</div>
+          <div style='font-size:10px;color:#636e72;margin-top:5px'>11 nilai (Feb–Des)</div>
+        </div>
+      </div>
+
+      <div style='background:#f8f9fa;border-radius:8px;padding:12px 16px;margin-top:18px;font-size:12px;color:#636e72;line-height:1.7'>
+      💡 <b>Konsep "berjalan" (rolling):</b> proyeksi tahun berikutnya selalu memakai data aktual
+      yang ada + proyeksi tahun sebelumnya. Pola ini bisa terus dilanjutkan — misalnya
+      <b>Proyeksi 2028</b> nanti akan memakai data aktual 2018–2026 + Proyeksi 2027, dan seterusnya
+      setiap kali data aktual tahun baru sudah tersedia.
+      </div>
+    </div>
+    """, unsafe_allow_html=True)
 
     with st.expander("📖 Penjelasan Lengkap Metode Regresi Linear (klik untuk buka)", expanded=False):
         st.markdown("""
